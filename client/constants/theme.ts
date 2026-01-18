@@ -143,12 +143,14 @@ export const Fonts = Platform.select({
     serif: "ui-serif",
     rounded: "ui-rounded",
     mono: "ui-monospace",
+    manuscript: "ui-serif",
   },
   default: {
     sans: "normal",
     serif: "serif",
     rounded: "normal",
     mono: "monospace",
+    manuscript: "serif",
   },
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -156,5 +158,48 @@ export const Fonts = Platform.select({
     rounded:
       "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    manuscript: "'Uncial Antiqua', 'Cinzel Decorative', 'Crimson Text', Georgia, serif",
   },
 });
+
+export const CursedTheme = {
+  manuscript: {
+    fontSize: 18,
+    lineHeight: 28,
+    fontWeight: "400" as const,
+    fontFamily: Fonts.manuscript,
+    letterSpacing: 0.5,
+    textShadowColor: "rgba(139, 69, 19, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  manuscriptTitle: {
+    fontSize: 32,
+    lineHeight: 42,
+    fontWeight: "700" as const,
+    fontFamily: Fonts.manuscript,
+    letterSpacing: 1,
+    textShadowColor: "rgba(139, 69, 19, 0.4)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+  },
+  manuscriptHeading: {
+    fontSize: 24,
+    lineHeight: 34,
+    fontWeight: "600" as const,
+    fontFamily: Fonts.manuscript,
+    letterSpacing: 0.8,
+    textShadowColor: "rgba(139, 69, 19, 0.35)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  cursedColors: {
+    manuscript: "#8B4513",
+    manuscriptLight: "#A0522D",
+    ink: "#2C1810",
+    parchment: "#F4E8D0",
+    cursedPurple: "#4B0082",
+    cursedRed: "#8B0000",
+    agedGold: "#DAA520",
+  },
+};

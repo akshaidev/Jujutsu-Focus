@@ -84,6 +84,7 @@ export function useGameState() {
   const [showSleepModal, setShowSleepModal] = useState(false);
   const [hasDismissedSleepModal, setHasDismissedSleepModal] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stateRef = useRef<GameState>(state);
 
@@ -113,6 +114,7 @@ export function useGameState() {
   useEffect(() => {
     if (mode !== "idle") {
       setSessionSeconds(0);
+      setSessionStartTime(Date.now());
       intervalRef.current = setInterval(() => {
         tick();
         setSessionSeconds((prev) => prev + 1);
@@ -123,6 +125,7 @@ export function useGameState() {
         intervalRef.current = null;
       }
       setSessionSeconds(0);
+      setSessionStartTime(null);
     }
     return () => {
       if (intervalRef.current) {
@@ -294,8 +297,38 @@ export function useGameState() {
   }, []);
 
   const stopTimer = useCallback(() => {
+    if (mode !== "idle" && sessionSeconds > 0) {
+      setState((prev) => {
+        let logMessage = "";
+        let value = 0;
+        
+        if (mode === "study") {
+          const earningRate = getEarningRate(prev.balance, prev.vowState.isActive);
+          value = (earningRate * sessionSeconds) / 60;
+          logMessage = `Cursed Energy Gained From ${Math.ceil(sessionSeconds / 60)} Minutes`;
+        } else if (mode === "gaming") {
+          value = -(sessionSeconds / 60);
+          logMessage = `Spent ${Math.ceil(sessionSeconds / 60)} Units of Cursed Energy for ${Math.ceil(sessionSeconds / 60)} Minutes`;
+        }
+        
+        const newLog = {
+          timestamp: Date.now(),
+          message: logMessage,
+          type: mode === "study" ? "session" : "session",
+          value: value,
+          duration: sessionSeconds,
+        };
+        
+        const currentLogs = prev.logs || [];
+        return {
+          ...prev,
+          logs: [newLog, ...currentLogs.slice(0, 99)], // Keep max 100 logs
+        };
+      });
+    }
+    
     setMode("idle");
-  }, []);
+  }, [mode, sessionSeconds]);
 
   const signBindingVow = useCallback(() => {
     const today = getTodayDateString();
@@ -316,6 +349,14 @@ export function useGameState() {
         usedGraceSeconds: 0,
         lastVowDate: today,
       },
+      logs: [
+        {
+          timestamp: Date.now(),
+          message: "Binding Vow Signed - Sacred contract activated",
+          type: "vow" as const,
+        },
+        ...(prev.logs || []),
+      ].slice(0, 99),
     }));
     return true;
   }, [state.balance, state.vowState.lastVowDate]);
@@ -324,16 +365,18 @@ export function useGameState() {
     currentState: GameState,
     message: string,
     type: "sleep" | "system" | "reward" = "system",
+    value?: number,
   ): GameState => {
     const newLog = {
       timestamp: Date.now(),
       message,
       type,
+      value,
     };
     const currentLogs = currentState.logs || [];
     return {
       ...currentState,
-      logs: [newLog, ...currentLogs.slice(0, 49)], // Prepend and keep max 50 logs
+      logs: [newLog, ...currentLogs.slice(0, 99)], // Prepend and keep max 100 logs
     };
   };
 
@@ -361,7 +404,7 @@ export function useGameState() {
         }
 
         newState.balance += ceEarned;
-        newState = addLog(newState, logMessage, "reward");
+        newState = addLog(newState, logMessage, "reward", ceEarned);
         newState.lastSleepDate = today;
         return newState;
       });
@@ -403,6 +446,15 @@ export function useGameState() {
         balance: Math.round(newBalance * 10000) / 10000,
         nceBalance: Math.round(newNceBalance * 10000) / 10000,
         rctCredits: prev.rctCredits - 1,
+        logs: [
+          {
+            timestamp: Date.now(),
+            message: `Reverse Cursed Technique - Purified ${healAmount.toFixed(2)} units of debt`,
+            type: "rct" as const,
+            value: healAmount,
+          },
+          ...(prev.logs || []),
+        ].slice(0, 99),
       };
     });
     return true;

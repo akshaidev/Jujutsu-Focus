@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, View, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -23,10 +23,16 @@ import { RCTButton } from "@/components/RCTButton";
 import { DebugPanel } from "@/components/DebugPanel";
 import { VowSuccessModal } from "@/components/VowSuccessModal";
 import { SessionTimer } from "@/components/SessionTimer";
+import { CursedGuide } from "@/components/CursedGuide";
+import { GuideBookButton } from "@/components/GuideBookButton";
+import { CursedLog } from "@/components/CursedLog";
+import { HistoryLogButton } from "@/components/HistoryLogButton";
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const [showGuide, setShowGuide] = useState(false);
+  const [showLog, setShowLog] = useState(false);
 
   const {
     state,
@@ -166,6 +172,14 @@ export default function DashboardScreen() {
       </ScrollView>
 
       <VowSuccessModal visible={showVowSuccess} onDismiss={dismissVowSuccess} />
+      
+      <GuideBookButton onPress={() => setShowGuide(true)} />
+      
+      <HistoryLogButton onPress={() => setShowLog(true)} />
+      
+      <CursedGuide visible={showGuide} onClose={() => setShowGuide(false)} />
+      
+      <CursedLog visible={showLog} onClose={() => setShowLog(false)} logs={state.logs} />
     </View>
   );
 }
