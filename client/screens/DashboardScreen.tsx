@@ -20,6 +20,7 @@ import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { ControlButton } from "@/components/ControlButton";
 import { BindingVowWidget } from "@/components/BindingVowWidget";
 import { RCTButton } from "@/components/RCTButton";
+import { DebugPanel } from "@/components/DebugPanel";
 import { VowSuccessModal } from "@/components/VowSuccessModal";
 import { SessionTimer } from "@/components/SessionTimer";
 
@@ -43,6 +44,7 @@ export default function DashboardScreen() {
     signBindingVow,
     useRCT,
     dismissVowSuccess,
+    debugUpdateState,
   } = useGameState();
 
   if (!isLoaded) {
@@ -154,6 +156,12 @@ export default function DashboardScreen() {
             onSignVow={signBindingVow}
           />
         ) : null}
+
+        <DebugPanel
+          state={state}
+          earningRate={earningRate}
+          debugUpdateState={debugUpdateState}
+        />
       </ScrollView>
 
       <VowSuccessModal visible={showVowSuccess} onDismiss={dismissVowSuccess} />

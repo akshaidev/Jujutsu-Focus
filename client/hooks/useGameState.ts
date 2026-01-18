@@ -315,6 +315,10 @@ export function useGameState() {
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, []);
 
+  const debugUpdateState = useCallback((updates: Partial<GameState>) => {
+    setState((prev) => ({ ...prev, ...updates }));
+  }, []);
+
   const earningRate = getEarningRate(state.balance, state.vowState.isActive);
   const availableGraceTime = Math.max(
     0,
@@ -341,5 +345,6 @@ export function useGameState() {
     useRCT,
     dismissVowSuccess,
     resetAllData,
+    debugUpdateState,
   };
 }
