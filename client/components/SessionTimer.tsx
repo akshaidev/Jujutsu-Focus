@@ -1,6 +1,7 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -10,9 +11,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
-import { GlassCard } from "@/components/GlassCard";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 interface SessionTimerProps {
   mode: "study" | "gaming";
@@ -36,7 +36,7 @@ export function SessionTimer({
   sessionSeconds,
   dailySeconds,
 }: SessionTimerProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const pulseOpacity = useSharedValue(0.7);
 
   React.useEffect(() => {
@@ -56,11 +56,22 @@ export function SessionTimer({
   const dailyLabel = mode === "study" ? "Today's Total Focus" : "Today's Total Leisure";
   const icon = mode === "study" ? "book-open" : "play";
 
-  return (
-    <GlassCard
-      variant={mode === "study" ? "accent" : "danger"}
-      style={styles.container}
-    >
+  const getBorderColor = () => {
+    return mode === "study" ? theme.cursedEnergy : theme.debt;
+  };
+
+  const getBackgroundTint = () => {
+    return mode === "study" ? theme.cursedEnergyBg : theme.debtBg;
+  };
+
+  const innerContent = (
+    <View style={[styles.innerContent, { borderColor: getBorderColor() }]}>
+      <View
+        style={[
+          styles.tintOverlay,
+          { backgroundColor: getBackgroundTint() },
+        ]}
+      />
       <View style={styles.header}>
         <Animated.View style={pulseStyle}>
           <Feather name={icon} size={18} color={accentColor} />
@@ -74,7 +85,7 @@ export function SessionTimer({
         {formatTime(sessionSeconds)}
       </ThemedText>
 
-      <View style={styles.dailyContainer}>
+      <View style={[styles.dailyContainer, { borderTopColor: theme.glassBorder }]}>
         <ThemedText style={[styles.dailyLabel, { color: theme.textSecondary }]}>
           {dailyLabel}
         </ThemedText>
@@ -82,14 +93,49 @@ export function SessionTimer({
           {formatTime(dailySeconds)}
         </ThemedText>
       </View>
-    </GlassCard>
+    </View>
+  );
+
+  if (Platform.OS === "ios") {
+    return (
+      <View style={styles.container}>
+        <BlurView
+          intensity={60}
+          tint={isDark ? "dark" : "light"}
+          style={styles.blur}
+        >
+          {innerContent}
+        </BlurView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.glass }]}>
+      {innerContent}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    overflow: "hidden",
+  },
+  blur: {
+    borderRadius: BorderRadius.xl,
+    overflow: "hidden",
+  },
+  innerContent: {
     alignItems: "center",
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  tintOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: BorderRadius.xl,
   },
   header: {
     flexDirection: "row",
@@ -114,7 +160,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: "rgba(128, 128, 128, 0.2)",
   },
   dailyLabel: {
     fontSize: 13,

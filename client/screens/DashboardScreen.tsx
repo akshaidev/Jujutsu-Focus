@@ -1,6 +1,15 @@
 import React from "react";
 import { StyleSheet, View, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInUp,
+  SlideOutUp,
+  SlideInDown,
+  SlideOutDown,
+  Layout,
+} from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { useGameState } from "@/hooks/useGameState";
@@ -89,7 +98,29 @@ export default function DashboardScreen() {
           mode={mode}
         />
 
-        <View style={styles.controlDeck}>
+        {isActive ? (
+          <Animated.View
+            entering={FadeIn.duration(200).springify().damping(20)}
+            exiting={FadeOut.duration(150)}
+            layout={Layout.springify().damping(18)}
+            style={styles.timerContainer}
+          >
+            <SessionTimer
+              mode={mode as "study" | "gaming"}
+              sessionSeconds={sessionSeconds}
+              dailySeconds={
+                mode === "study"
+                  ? state.dailyStudySeconds || 0
+                  : state.dailyGamingSeconds || 0
+              }
+            />
+          </Animated.View>
+        ) : null}
+
+        <Animated.View
+          layout={Layout.springify().damping(18).stiffness(120)}
+          style={styles.controlDeck}
+        >
           <ControlButton
             icon="book-open"
             label="Focus"
@@ -106,19 +137,7 @@ export default function DashboardScreen() {
             activeLabel="Stop"
             variant="gaming"
           />
-        </View>
-
-        {isActive ? (
-          <SessionTimer
-            mode={mode as "study" | "gaming"}
-            sessionSeconds={sessionSeconds}
-            dailySeconds={
-              mode === "study"
-                ? state.dailyStudySeconds || 0
-                : state.dailyGamingSeconds || 0
-            }
-          />
-        ) : null}
+        </Animated.View>
 
         {state.rctCredits > 0 ? (
           <RCTButton
@@ -160,6 +179,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: Spacing.sm,
     justifyContent: "center",
+  },
+  timerContainer: {
+    marginTop: Spacing.lg,
   },
   controlDeck: {
     flexDirection: "row",
