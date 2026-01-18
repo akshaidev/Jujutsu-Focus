@@ -95,7 +95,7 @@ export function RCTButton({
         theme.backgroundSecondary,
       ];
 
-  const buttonTitle = balance >= 0 ? "Purify Debt" : "Purify Debt";
+  const buttonTitle = "Purify Debt";
   
   const subtitleText =
     rctCredits === 0
