@@ -23,6 +23,9 @@ export interface GameState {
   vowState: VowState;
   totalStudySeconds: number;
   totalGamingSeconds: number;
+  dailyStudySeconds: number;
+  dailyGamingSeconds: number;
+  lastDailyResetDate: string | null;
 }
 
 type Mode = "idle" | "study" | "gaming";
@@ -46,6 +49,9 @@ const initialState: GameState = {
   vowState: initialVowState,
   totalStudySeconds: 0,
   totalGamingSeconds: 0,
+  dailyStudySeconds: 0,
+  dailyGamingSeconds: 0,
+  lastDailyResetDate: null,
 };
 
 function getEarningRate(balance: number, vowActive: boolean): number {
@@ -71,6 +77,7 @@ export function useGameState() {
   const [mode, setMode] = useState<Mode>("idle");
   const [isLoaded, setIsLoaded] = useState(false);
   const [showVowSuccess, setShowVowSuccess] = useState(false);
+  const [sessionSeconds, setSessionSeconds] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stateRef = useRef<GameState>(state);
 
@@ -90,14 +97,17 @@ export function useGameState() {
 
   useEffect(() => {
     if (mode !== "idle") {
+      setSessionSeconds(0);
       intervalRef.current = setInterval(() => {
         tick();
+        setSessionSeconds((prev) => prev + 1);
       }, TICK_INTERVAL);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      setSessionSeconds(0);
     }
     return () => {
       if (intervalRef.current) {
@@ -112,6 +122,7 @@ export function useGameState() {
       if (stored) {
         const parsed = JSON.parse(stored) as GameState;
         checkMidnightReset(parsed);
+        checkDailyReset(parsed);
         setState(parsed);
       }
     } catch (error) {
@@ -125,6 +136,15 @@ export function useGameState() {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     } catch (error) {
       console.error("Failed to save state:", error);
+    }
+  };
+
+  const checkDailyReset = (loadedState: GameState) => {
+    const today = getTodayDateString();
+    if (loadedState.lastDailyResetDate !== today) {
+      loadedState.dailyStudySeconds = 0;
+      loadedState.dailyGamingSeconds = 0;
+      loadedState.lastDailyResetDate = today;
     }
   };
 
@@ -160,12 +180,20 @@ export function useGameState() {
     setState((prev) => {
       const currentMode = mode;
       let newState = { ...prev };
+      
+      const today = getTodayDateString();
+      if (prev.lastDailyResetDate !== today) {
+        newState.dailyStudySeconds = 0;
+        newState.dailyGamingSeconds = 0;
+        newState.lastDailyResetDate = today;
+      }
 
       if (currentMode === "study") {
         const earningRate = getEarningRate(prev.balance, prev.vowState.isActive);
         const cePerSecond = earningRate / 60;
         newState.balance = Math.round((prev.balance + cePerSecond) * 10000) / 10000;
         newState.totalStudySeconds = prev.totalStudySeconds + 1;
+        newState.dailyStudySeconds = (prev.dailyStudySeconds || 0) + 1;
 
         if (prev.streakDays > 0 || prev.vowState.isActive) {
           const ncePerSecond = 0.5 / 60;
@@ -189,6 +217,8 @@ export function useGameState() {
         }
       } else if (currentMode === "gaming") {
         const cePerSecond = 1.0 / 60;
+        newState.totalGamingSeconds = prev.totalGamingSeconds + 1;
+        newState.dailyGamingSeconds = (prev.dailyGamingSeconds || 0) + 1;
         
         if (prev.vowState.isActive) {
           const availableGrace = prev.vowState.graceTimeSeconds - prev.vowState.usedGraceSeconds;
@@ -203,7 +233,6 @@ export function useGameState() {
         } else {
           newState.balance = Math.round((prev.balance - cePerSecond) * 10000) / 10000;
         }
-        newState.totalGamingSeconds = prev.totalGamingSeconds + 1;
       }
 
       return newState;
@@ -275,6 +304,7 @@ export function useGameState() {
   );
   const canSignVow =
     state.balance < 0 && state.vowState.lastVowDate !== getTodayDateString();
+  const hasUsedVowToday = state.vowState.lastVowDate === getTodayDateString();
 
   return {
     state,
@@ -283,7 +313,9 @@ export function useGameState() {
     earningRate,
     availableGraceTime,
     canSignVow,
+    hasUsedVowToday,
     showVowSuccess,
+    sessionSeconds,
     startStudy,
     startGaming,
     stopTimer,

@@ -12,11 +12,12 @@ import { ControlButton } from "@/components/ControlButton";
 import { BindingVowWidget } from "@/components/BindingVowWidget";
 import { RCTButton } from "@/components/RCTButton";
 import { VowSuccessModal } from "@/components/VowSuccessModal";
+import { SessionTimer } from "@/components/SessionTimer";
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  
+
   const {
     state,
     mode,
@@ -24,7 +25,9 @@ export default function DashboardScreen() {
     earningRate,
     availableGraceTime,
     canSignVow,
+    hasUsedVowToday,
     showVowSuccess,
+    sessionSeconds,
     startStudy,
     startGaming,
     stopTimer,
@@ -42,6 +45,7 @@ export default function DashboardScreen() {
   const isInDebt = state.balance < 0;
   const isStudying = mode === "study";
   const isGaming = mode === "gaming";
+  const isActive = mode !== "idle";
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -104,7 +108,19 @@ export default function DashboardScreen() {
           />
         </View>
 
-        {state.rctCredits > 0 && state.nceBalance >= 1 ? (
+        {isActive ? (
+          <SessionTimer
+            mode={mode as "study" | "gaming"}
+            sessionSeconds={sessionSeconds}
+            dailySeconds={
+              mode === "study"
+                ? state.dailyStudySeconds || 0
+                : state.dailyGamingSeconds || 0
+            }
+          />
+        ) : null}
+
+        {state.rctCredits > 0 ? (
           <RCTButton
             nceBalance={state.nceBalance}
             rctCredits={state.rctCredits}
@@ -116,6 +132,7 @@ export default function DashboardScreen() {
           <BindingVowWidget
             isVowActive={state.vowState.isActive}
             canSignVow={canSignVow}
+            hasUsedVowToday={hasUsedVowToday}
             graceTimeSeconds={availableGraceTime}
             onSignVow={signBindingVow}
           />

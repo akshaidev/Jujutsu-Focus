@@ -1,17 +1,22 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, View, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
   WithSpringConfig,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing } from "@/constants/theme";
+import { BorderRadius, Spacing, Shadows } from "@/constants/theme";
 
 interface RCTButtonProps {
   nceBalance: number;
@@ -28,12 +33,30 @@ const springConfig: WithSpringConfig = {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0.6);
   const canUse = rctCredits >= 1 && nceBalance >= 1;
+
+  useEffect(() => {
+    if (canUse) {
+      glowOpacity.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.6, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+    }
+  }, [canUse]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
   }));
 
   const handlePressIn = () => {
@@ -57,44 +80,118 @@ export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) 
     return null;
   }
 
+  const gradientColors = canUse
+    ? isDark
+      ? ["#9333EA", "#6366F1", "#8B5CF6"]
+      : ["#A855F7", "#818CF8", "#C084FC"]
+    : [theme.backgroundSecondary, theme.backgroundTertiary, theme.backgroundSecondary];
+
   return (
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={!canUse}
-      style={[
-        styles.container,
-        {
-          backgroundColor: canUse ? theme.success : theme.backgroundSecondary,
-          opacity: canUse ? 1 : 0.5,
-        },
-        animatedStyle,
-      ]}
+      style={[styles.wrapper, animatedStyle]}
     >
-      <Feather name="zap" size={16} color={canUse ? "#FFFFFF" : theme.textSecondary} />
-      <ThemedText
-        style={[styles.text, { color: canUse ? "#FFFFFF" : theme.textSecondary }]}
+      {canUse ? (
+        <Animated.View style={[styles.glowOuter, glowStyle]}>
+          <LinearGradient
+            colors={["rgba(168, 85, 247, 0.4)", "rgba(99, 102, 241, 0.2)", "rgba(168, 85, 247, 0.4)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.glowGradient}
+          />
+        </Animated.View>
+      ) : null}
+      <LinearGradient
+        colors={gradientColors as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[
+          styles.container,
+          !canUse && { opacity: 0.5 },
+        ]}
       >
-        Use RCT ({nceBalance.toFixed(1)} NCE → CE)
-      </ThemedText>
+        <Feather
+          name="zap"
+          size={18}
+          color={canUse ? "#FFFFFF" : theme.textSecondary}
+        />
+        <View style={styles.textContainer}>
+          <ThemedText
+            style={[styles.title, { color: canUse ? "#FFFFFF" : theme.textSecondary }]}
+          >
+            Purify Debt
+          </ThemedText>
+          <ThemedText
+            style={[styles.subtitle, { color: canUse ? "rgba(255,255,255,0.8)" : theme.textSecondary }]}
+          >
+            Convert {nceBalance.toFixed(1)} NCE to CE
+          </ThemedText>
+        </View>
+        <View
+          style={[
+            styles.creditBadge,
+            { backgroundColor: canUse ? "rgba(255,255,255,0.2)" : theme.backgroundTertiary },
+          ]}
+        >
+          <ThemedText
+            style={[styles.creditText, { color: canUse ? "#FFFFFF" : theme.textSecondary }]}
+          >
+            {rctCredits} RCT
+          </ThemedText>
+        </View>
+      </LinearGradient>
     </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    marginTop: Spacing.lg,
+    position: "relative",
+  },
+  glowOuter: {
+    position: "absolute",
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: BorderRadius.xl + 4,
+    overflow: "hidden",
+  },
+  glowGradient: {
+    flex: 1,
+    borderRadius: BorderRadius.xl + 4,
+  },
   container: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
+    gap: Spacing.md,
+    paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.full,
-    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    ...Shadows.medium,
   },
-  text: {
-    fontSize: 14,
+  textContainer: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  creditBadge: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  creditText: {
+    fontSize: 12,
     fontWeight: "600",
   },
 });

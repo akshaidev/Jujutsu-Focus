@@ -20,6 +20,7 @@ import { BorderRadius, Spacing } from "@/constants/theme";
 interface BindingVowWidgetProps {
   isVowActive: boolean;
   canSignVow: boolean;
+  hasUsedVowToday: boolean;
   graceTimeSeconds: number;
   onSignVow: () => void;
 }
@@ -41,6 +42,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function BindingVowWidget({
   isVowActive,
   canSignVow,
+  hasUsedVowToday,
   graceTimeSeconds,
   onSignVow,
 }: BindingVowWidgetProps) {
@@ -67,7 +69,7 @@ export function BindingVowWidget({
   }));
 
   const handlePressIn = () => {
-    if (!isVowActive && canSignVow) {
+    if (canSignVow) {
       scale.value = withSpring(0.98, springConfig);
     }
   };
@@ -77,7 +79,7 @@ export function BindingVowWidget({
   };
 
   const handlePress = () => {
-    if (!isVowActive && canSignVow) {
+    if (canSignVow) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       onSignVow();
     }
@@ -106,29 +108,41 @@ export function BindingVowWidget({
     );
   }
 
-  if (!canSignVow) {
-    return null;
-  }
+  const isDisabled = !canSignVow && hasUsedVowToday;
 
   return (
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={animatedStyle}
+      disabled={isDisabled}
+      style={[animatedStyle, isDisabled && styles.disabled]}
     >
-      <GlassCard variant="danger" style={styles.card}>
+      <GlassCard variant={isDisabled ? "default" : "danger"} style={styles.card}>
         <View style={styles.signContainer}>
-          <Feather name="shield" size={24} color={theme.debt} />
+          <Feather
+            name="shield"
+            size={24}
+            color={isDisabled ? theme.textSecondary : theme.debt}
+          />
           <View style={styles.signTextContainer}>
-            <ThemedText style={[styles.signTitle, { color: theme.text }]}>
-              Sign Binding Vow
+            <ThemedText
+              style={[
+                styles.signTitle,
+                { color: isDisabled ? theme.textSecondary : theme.text },
+              ]}
+            >
+              {isDisabled ? "Limit Reached" : "Sign Binding Vow"}
             </ThemedText>
             <ThemedText style={[styles.signSubtitle, { color: theme.textSecondary }]}>
-              +0.5 CE/min boost and earn grace time
+              {isDisabled
+                ? "1 vow per day, come back tomorrow"
+                : "+0.5 CE/min boost and earn grace time"}
             </ThemedText>
           </View>
-          <Feather name="chevron-right" size={20} color={theme.debt} />
+          {!isDisabled ? (
+            <Feather name="chevron-right" size={20} color={theme.debt} />
+          ) : null}
         </View>
       </GlassCard>
     </AnimatedPressable>
@@ -138,6 +152,9 @@ export function BindingVowWidget({
 const styles = StyleSheet.create({
   card: {
     marginTop: Spacing.lg,
+  },
+  disabled: {
+    opacity: 0.6,
   },
   activeHeader: {
     flexDirection: "row",
