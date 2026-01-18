@@ -40,10 +40,10 @@ export function BalanceDisplay({
       pulseScale.value = withRepeat(
         withSequence(
           withSpring(1.02, { damping: 10, stiffness: 100 }),
-          withSpring(1, { damping: 10, stiffness: 100 })
+          withSpring(1, { damping: 10, stiffness: 100 }),
         ),
         -1,
-        true
+        true,
       );
     } else {
       pulseScale.value = withSpring(1, springConfig);

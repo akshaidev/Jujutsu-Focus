@@ -31,9 +31,7 @@ export function StatusPill({
   const content = (
     <View style={styles.content}>
       <Feather name={icon} size={14} color={getIconColor()} />
-      <ThemedText
-        style={[styles.text, { color: theme.textSecondary }]}
-      >
+      <ThemedText style={[styles.text, { color: theme.textSecondary }]}>
         {label}:{" "}
         <ThemedText
           style={[
@@ -43,8 +41,8 @@ export function StatusPill({
                 variant === "accent"
                   ? theme.cursedEnergy
                   : variant === "success"
-                  ? theme.success
-                  : theme.text,
+                    ? theme.success
+                    : theme.text,
             },
           ]}
         >

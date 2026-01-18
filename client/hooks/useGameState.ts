@@ -180,7 +180,7 @@ export function useGameState() {
     setState((prev) => {
       const currentMode = mode;
       let newState = { ...prev };
-      
+
       const today = getTodayDateString();
       if (prev.lastDailyResetDate !== today) {
         newState.dailyStudySeconds = 0;
@@ -189,15 +189,20 @@ export function useGameState() {
       }
 
       if (currentMode === "study") {
-        const earningRate = getEarningRate(prev.balance, prev.vowState.isActive);
+        const earningRate = getEarningRate(
+          prev.balance,
+          prev.vowState.isActive,
+        );
         const cePerSecond = earningRate / 60;
-        newState.balance = Math.round((prev.balance + cePerSecond) * 10000) / 10000;
+        newState.balance =
+          Math.round((prev.balance + cePerSecond) * 10000) / 10000;
         newState.totalStudySeconds = prev.totalStudySeconds + 1;
         newState.dailyStudySeconds = (prev.dailyStudySeconds || 0) + 1;
 
         if (prev.streakDays > 0 || prev.vowState.isActive) {
           const ncePerSecond = 0.5 / 60;
-          newState.nceBalance = Math.round((prev.nceBalance + ncePerSecond) * 10000) / 10000;
+          newState.nceBalance =
+            Math.round((prev.nceBalance + ncePerSecond) * 10000) / 10000;
         }
 
         if (prev.vowState.isActive) {
@@ -205,13 +210,22 @@ export function useGameState() {
           newState.vowState = {
             ...prev.vowState,
             studySecondsWhileVow: prev.vowState.studySecondsWhileVow + 1,
-            graceTimeSeconds: Math.round((prev.vowState.graceTimeSeconds + graceEarned) * 100) / 100,
+            graceTimeSeconds:
+              Math.round((prev.vowState.graceTimeSeconds + graceEarned) * 100) /
+              100,
           };
 
           if (newState.balance >= 0) {
-            const bonusCE = (newState.vowState.graceTimeSeconds - newState.vowState.usedGraceSeconds) / 60;
-            newState.balance = Math.round((newState.balance + bonusCE) * 10000) / 10000;
-            newState.vowState = { ...initialVowState, lastVowDate: prev.vowState.lastVowDate };
+            const bonusCE =
+              (newState.vowState.graceTimeSeconds -
+                newState.vowState.usedGraceSeconds) /
+              60;
+            newState.balance =
+              Math.round((newState.balance + bonusCE) * 10000) / 10000;
+            newState.vowState = {
+              ...initialVowState,
+              lastVowDate: prev.vowState.lastVowDate,
+            };
             setTimeout(() => setShowVowSuccess(true), 100);
           }
         }
@@ -219,19 +233,23 @@ export function useGameState() {
         const cePerSecond = 1.0 / 60;
         newState.totalGamingSeconds = prev.totalGamingSeconds + 1;
         newState.dailyGamingSeconds = (prev.dailyGamingSeconds || 0) + 1;
-        
+
         if (prev.vowState.isActive) {
-          const availableGrace = prev.vowState.graceTimeSeconds - prev.vowState.usedGraceSeconds;
+          const availableGrace =
+            prev.vowState.graceTimeSeconds - prev.vowState.usedGraceSeconds;
           if (availableGrace > 0) {
             newState.vowState = {
               ...prev.vowState,
-              usedGraceSeconds: Math.round((prev.vowState.usedGraceSeconds + 1) * 100) / 100,
+              usedGraceSeconds:
+                Math.round((prev.vowState.usedGraceSeconds + 1) * 100) / 100,
             };
           } else {
-            newState.balance = Math.round((prev.balance - cePerSecond) * 10000) / 10000;
+            newState.balance =
+              Math.round((prev.balance - cePerSecond) * 10000) / 10000;
           }
         } else {
-          newState.balance = Math.round((prev.balance - cePerSecond) * 10000) / 10000;
+          newState.balance =
+            Math.round((prev.balance - cePerSecond) * 10000) / 10000;
         }
       }
 
@@ -300,7 +318,7 @@ export function useGameState() {
   const earningRate = getEarningRate(state.balance, state.vowState.isActive);
   const availableGraceTime = Math.max(
     0,
-    state.vowState.graceTimeSeconds - state.vowState.usedGraceSeconds
+    state.vowState.graceTimeSeconds - state.vowState.usedGraceSeconds,
   );
   const canSignVow =
     state.balance < 0 && state.vowState.lastVowDate !== getTodayDateString();

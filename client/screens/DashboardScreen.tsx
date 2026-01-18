@@ -47,7 +47,9 @@ export default function DashboardScreen() {
 
   if (!isLoaded) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]} />
+      <View
+        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+      />
     );
   }
 
@@ -82,14 +84,12 @@ export default function DashboardScreen() {
             value={state.nceBalance.toFixed(1)}
             variant="default"
           />
-          {state.rctCredits > 0 ? (
-            <StatusPill
-              icon="shield"
-              label="RCT"
-              value={state.rctCredits}
-              variant="success"
-            />
-          ) : null}
+          <StatusPill
+            icon="shield"
+            label="RCT"
+            value={state.rctCredits}
+            variant={state.rctCredits > 0 ? "success" : "default"}
+          />
         </View>
 
         <BalanceDisplay
@@ -139,13 +139,11 @@ export default function DashboardScreen() {
           />
         </Animated.View>
 
-        {state.rctCredits > 0 ? (
-          <RCTButton
-            nceBalance={state.nceBalance}
-            rctCredits={state.rctCredits}
-            onUseRCT={useRCT}
-          />
-        ) : null}
+        <RCTButton
+          nceBalance={state.nceBalance}
+          rctCredits={state.rctCredits}
+          onUseRCT={useRCT}
+        />
 
         {isInDebt || state.vowState.isActive ? (
           <BindingVowWidget

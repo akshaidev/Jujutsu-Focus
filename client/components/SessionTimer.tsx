@@ -43,7 +43,7 @@ export function SessionTimer({
     pulseOpacity.value = withRepeat(
       withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
       -1,
-      true
+      true,
     );
   }, []);
 
@@ -53,7 +53,8 @@ export function SessionTimer({
 
   const accentColor = mode === "study" ? theme.cursedEnergy : theme.debt;
   const modeLabel = mode === "study" ? "Focus Session" : "Leisure Session";
-  const dailyLabel = mode === "study" ? "Today's Total Focus" : "Today's Total Leisure";
+  const dailyLabel =
+    mode === "study" ? "Today's Total Focus" : "Today's Total Leisure";
   const icon = mode === "study" ? "book-open" : "play";
 
   const getBorderColor = () => {
@@ -67,10 +68,7 @@ export function SessionTimer({
   const innerContent = (
     <View style={[styles.innerContent, { borderColor: getBorderColor() }]}>
       <View
-        style={[
-          styles.tintOverlay,
-          { backgroundColor: getBackgroundTint() },
-        ]}
+        style={[styles.tintOverlay, { backgroundColor: getBackgroundTint() }]}
       />
       <View style={styles.header}>
         <Animated.View style={pulseStyle}>
@@ -85,7 +83,9 @@ export function SessionTimer({
         {formatTime(sessionSeconds)}
       </ThemedText>
 
-      <View style={[styles.dailyContainer, { borderTopColor: theme.glassBorder }]}>
+      <View
+        style={[styles.dailyContainer, { borderTopColor: theme.glassBorder }]}
+      >
         <ThemedText style={[styles.dailyLabel, { color: theme.textSecondary }]}>
           {dailyLabel}
         </ThemedText>

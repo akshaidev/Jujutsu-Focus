@@ -55,7 +55,7 @@ export function BindingVowWidget({
       pulseOpacity.value = withRepeat(
         withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
         -1,
-        true
+        true,
       );
     }
   }, [isVowActive]);
@@ -92,12 +92,16 @@ export function BindingVowWidget({
           <Animated.View style={pulseStyle}>
             <Feather name="shield" size={20} color={theme.cursedEnergy} />
           </Animated.View>
-          <ThemedText style={[styles.activeTitle, { color: theme.cursedEnergy }]}>
+          <ThemedText
+            style={[styles.activeTitle, { color: theme.cursedEnergy }]}
+          >
             Binding Vow Active
           </ThemedText>
         </View>
         <View style={styles.graceContainer}>
-          <ThemedText style={[styles.graceLabel, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.graceLabel, { color: theme.textSecondary }]}
+          >
             Grace Time Available
           </ThemedText>
           <ThemedText style={[styles.graceTime, { color: theme.cursedEnergy }]}>
@@ -118,7 +122,10 @@ export function BindingVowWidget({
       disabled={isDisabled}
       style={[animatedStyle, isDisabled && styles.disabled]}
     >
-      <GlassCard variant={isDisabled ? "default" : "danger"} style={styles.card}>
+      <GlassCard
+        variant={isDisabled ? "default" : "danger"}
+        style={styles.card}
+      >
         <View style={styles.signContainer}>
           <Feather
             name="shield"
@@ -134,7 +141,9 @@ export function BindingVowWidget({
             >
               {isDisabled ? "Limit Reached" : "Sign Binding Vow"}
             </ThemedText>
-            <ThemedText style={[styles.signSubtitle, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.signSubtitle, { color: theme.textSecondary }]}
+            >
               {isDisabled
                 ? "1 vow per day, come back tomorrow"
                 : "+0.5 CE/min boost and earn grace time"}

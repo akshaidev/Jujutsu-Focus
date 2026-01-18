@@ -32,7 +32,11 @@ const springConfig: WithSpringConfig = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) {
+export function RCTButton({
+  nceBalance,
+  rctCredits,
+  onUseRCT,
+}: RCTButtonProps) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.6);
@@ -43,10 +47,13 @@ export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) 
       glowOpacity.value = withRepeat(
         withSequence(
           withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.6, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+          withTiming(0.6, {
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+          }),
         ),
         -1,
-        false
+        false,
       );
     }
   }, [canUse]);
@@ -76,15 +83,22 @@ export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) 
     }
   };
 
-  if (rctCredits < 1) {
-    return null;
-  }
-
   const gradientColors = canUse
     ? isDark
       ? ["#9333EA", "#6366F1", "#8B5CF6"]
       : ["#A855F7", "#818CF8", "#C084FC"]
-    : [theme.backgroundSecondary, theme.backgroundTertiary, theme.backgroundSecondary];
+    : [
+        theme.backgroundSecondary,
+        theme.backgroundTertiary,
+        theme.backgroundSecondary,
+      ];
+
+  const subtitleText =
+    rctCredits === 0
+      ? "Earn streak to unlock"
+      : nceBalance === 0
+        ? "No NCE to purify"
+        : `Convert ${nceBalance.toFixed(1)} NCE to CE`;
 
   return (
     <AnimatedPressable
@@ -97,7 +111,11 @@ export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) 
       {canUse ? (
         <Animated.View style={[styles.glowOuter, glowStyle]}>
           <LinearGradient
-            colors={["rgba(168, 85, 247, 0.4)", "rgba(99, 102, 241, 0.2)", "rgba(168, 85, 247, 0.4)"]}
+            colors={[
+              "rgba(168, 85, 247, 0.4)",
+              "rgba(99, 102, 241, 0.2)",
+              "rgba(168, 85, 247, 0.4)",
+            ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.glowGradient}
@@ -108,10 +126,7 @@ export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) 
         colors={gradientColors as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[
-          styles.container,
-          !canUse && { opacity: 0.5 },
-        ]}
+        style={[styles.container, !canUse && { opacity: 0.5 }]}
       >
         <Feather
           name="zap"
@@ -120,24 +135,37 @@ export function RCTButton({ nceBalance, rctCredits, onUseRCT }: RCTButtonProps) 
         />
         <View style={styles.textContainer}>
           <ThemedText
-            style={[styles.title, { color: canUse ? "#FFFFFF" : theme.textSecondary }]}
+            style={[
+              styles.title,
+              { color: canUse ? "#FFFFFF" : theme.textSecondary },
+            ]}
           >
             Purify Debt
           </ThemedText>
           <ThemedText
-            style={[styles.subtitle, { color: canUse ? "rgba(255,255,255,0.8)" : theme.textSecondary }]}
+            style={[
+              styles.subtitle,
+              { color: canUse ? "rgba(255,255,255,0.8)" : theme.textSecondary },
+            ]}
           >
-            Convert {nceBalance.toFixed(1)} NCE to CE
+            {subtitleText}
           </ThemedText>
         </View>
         <View
           style={[
             styles.creditBadge,
-            { backgroundColor: canUse ? "rgba(255,255,255,0.2)" : theme.backgroundTertiary },
+            {
+              backgroundColor: canUse
+                ? "rgba(255,255,255,0.2)"
+                : theme.backgroundTertiary,
+            },
           ]}
         >
           <ThemedText
-            style={[styles.creditText, { color: canUse ? "#FFFFFF" : theme.textSecondary }]}
+            style={[
+              styles.creditText,
+              { color: canUse ? "#FFFFFF" : theme.textSecondary },
+            ]}
           >
             {rctCredits} RCT
           </ThemedText>

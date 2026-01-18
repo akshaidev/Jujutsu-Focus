@@ -34,8 +34,8 @@ export function VowSuccessModal({ visible, onDismiss }: VowSuccessModalProps) {
         200,
         withSequence(
           withSpring(1.3, { damping: 8, stiffness: 150 }),
-          withSpring(1, { damping: 10, stiffness: 120 })
-        )
+          withSpring(1, { damping: 10, stiffness: 120 }),
+        ),
       );
     } else {
       scale.value = 0;

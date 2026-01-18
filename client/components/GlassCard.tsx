@@ -71,7 +71,10 @@ export function GlassCard({
         <View
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: getBackgroundTint(), borderRadius: BorderRadius.xl },
+            {
+              backgroundColor: getBackgroundTint(),
+              borderRadius: BorderRadius.xl,
+            },
           ]}
         />
       ) : null}

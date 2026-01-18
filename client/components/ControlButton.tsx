@@ -81,10 +81,7 @@ export function ControlButton({
         color={isActive ? "#FFFFFF" : theme.text}
       />
       <ThemedText
-        style={[
-          styles.label,
-          { color: isActive ? "#FFFFFF" : theme.text },
-        ]}
+        style={[styles.label, { color: isActive ? "#FFFFFF" : theme.text }]}
       >
         {isActive ? activeLabel : label}
       </ThemedText>
