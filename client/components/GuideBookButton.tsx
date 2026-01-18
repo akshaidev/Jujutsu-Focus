@@ -2,7 +2,6 @@ import React from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  SlideInUp,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -37,7 +36,6 @@ export function GuideBookButton({ onPress }: GuideBookButtonProps) {
 
   return (
     <Animated.View
-      entering={SlideInUp.duration(400).delay(200)}
       style={[
         styles.container,
         animatedStyle,

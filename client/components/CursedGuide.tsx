@@ -161,9 +161,10 @@ export function CursedGuide({ visible, onClose }: CursedGuideProps) {
               ]}
             >
               Through unwavering discipline, you may unlock Reverse Cursed
-              Technique (RCT). Maintain a positive daily balance for three
-              consecutive days to earn one RCT credit. This rare currency holds
-              the power to reverse even the deepest curses of debt.
+              Technique (RCT). For every 3 consecutive days you maintain a
+              positive daily balance, you earn exactly 1 RCT credit. This rare
+              currency holds the power to reverse even the deepest curses of
+              debt—use it wisely, young sorcerer.
             </Text>
           </View>
 

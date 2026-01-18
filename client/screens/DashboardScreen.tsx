@@ -4,10 +4,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
   FadeOut,
-  SlideInUp,
-  SlideOutUp,
-  SlideInDown,
-  SlideOutDown,
   Layout,
 } from "react-native-reanimated";
 
@@ -88,13 +84,13 @@ export default function DashboardScreen() {
           />
           <StatusPill
             icon="activity"
-            label="NCE"
+            label="Negative CE"
             value={state.nceBalance.toFixed(1)}
             variant="default"
           />
           <StatusPill
             icon="shield"
-            label="RCT"
+            label="RCT Credits"
             value={state.rctCredits}
             variant={state.rctCredits > 0 ? "success" : "default"}
           />
@@ -172,14 +168,18 @@ export default function DashboardScreen() {
       </ScrollView>
 
       <VowSuccessModal visible={showVowSuccess} onDismiss={dismissVowSuccess} />
-      
+
       <GuideBookButton onPress={() => setShowGuide(true)} />
-      
+
       <HistoryLogButton onPress={() => setShowLog(true)} />
-      
+
       <CursedGuide visible={showGuide} onClose={() => setShowGuide(false)} />
-      
-      <CursedLog visible={showLog} onClose={() => setShowLog(false)} logs={state.logs} />
+
+      <CursedLog
+        visible={showLog}
+        onClose={() => setShowLog(false)}
+        logs={state.logs}
+      />
     </View>
   );
 }

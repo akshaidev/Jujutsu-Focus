@@ -1,11 +1,7 @@
 import React from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  SlideInUp,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -30,7 +26,6 @@ export function HistoryLogButton({ onPress }: HistoryLogButtonProps) {
 
   return (
     <Animated.View
-      entering={SlideInUp.duration(400).delay(300)}
       style={[
         styles.container,
         {

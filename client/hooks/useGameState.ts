@@ -84,7 +84,6 @@ export function useGameState() {
   const [showSleepModal, setShowSleepModal] = useState(false);
   const [hasDismissedSleepModal, setHasDismissedSleepModal] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stateRef = useRef<GameState>(state);
 
@@ -114,7 +113,6 @@ export function useGameState() {
   useEffect(() => {
     if (mode !== "idle") {
       setSessionSeconds(0);
-      setSessionStartTime(Date.now());
       intervalRef.current = setInterval(() => {
         tick();
         setSessionSeconds((prev) => prev + 1);
@@ -125,7 +123,6 @@ export function useGameState() {
         intervalRef.current = null;
       }
       setSessionSeconds(0);
-      setSessionStartTime(null);
     }
     return () => {
       if (intervalRef.current) {
@@ -301,16 +298,19 @@ export function useGameState() {
       setState((prev) => {
         let logMessage = "";
         let value = 0;
-        
+
         if (mode === "study") {
-          const earningRate = getEarningRate(prev.balance, prev.vowState.isActive);
+          const earningRate = getEarningRate(
+            prev.balance,
+            prev.vowState.isActive,
+          );
           value = (earningRate * sessionSeconds) / 60;
-          logMessage = `Cursed Energy Gained From ${Math.ceil(sessionSeconds / 60)} Minutes`;
+          logMessage = `Cursed Energy Gained From Focus Session`;
         } else if (mode === "gaming") {
           value = -(sessionSeconds / 60);
-          logMessage = `Spent ${Math.ceil(sessionSeconds / 60)} Units of Cursed Energy for ${Math.ceil(sessionSeconds / 60)} Minutes`;
+          logMessage = `Spent Cursed Energy on Leisure Session`;
         }
-        
+
         const newLog = {
           timestamp: Date.now(),
           message: logMessage,
@@ -318,7 +318,7 @@ export function useGameState() {
           value: value,
           duration: sessionSeconds,
         };
-        
+
         const currentLogs = prev.logs || [];
         return {
           ...prev,
@@ -326,7 +326,7 @@ export function useGameState() {
         };
       });
     }
-    
+
     setMode("idle");
   }, [mode, sessionSeconds]);
 
@@ -410,6 +410,12 @@ export function useGameState() {
       });
 
       setShowSleepModal(false);
+      // Trigger a page refresh by reloading the window
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      }
       return true;
     },
     [state.lastSleepDate],
@@ -438,9 +444,9 @@ export function useGameState() {
       const newBalance = prev.balance + healAmount;
       // New NCE balance: preserve excess NCE
       const newNceBalance = prev.nceBalance - healAmount;
-      
+
       console.log(`Purified Debt (+${healAmount.toFixed(2)} CE)`);
-      
+
       return {
         ...prev,
         balance: Math.round(newBalance * 10000) / 10000,
