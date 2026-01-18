@@ -26,6 +26,8 @@ export interface GameState {
   dailyStudySeconds: number;
   dailyGamingSeconds: number;
   lastDailyResetDate: string | null;
+  lastSleepDate: string | null;
+  logs: any[];
 }
 
 type Mode = "idle" | "study" | "gaming";
@@ -52,6 +54,8 @@ const initialState: GameState = {
   dailyStudySeconds: 0,
   dailyGamingSeconds: 0,
   lastDailyResetDate: null,
+  lastSleepDate: null,
+  logs: [],
 };
 
 function getEarningRate(balance: number, vowActive: boolean): number {
@@ -77,6 +81,8 @@ export function useGameState() {
   const [mode, setMode] = useState<Mode>("idle");
   const [isLoaded, setIsLoaded] = useState(false);
   const [showVowSuccess, setShowVowSuccess] = useState(false);
+  const [showSleepModal, setShowSleepModal] = useState(false);
+  const [hasDismissedSleepModal, setHasDismissedSleepModal] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stateRef = useRef<GameState>(state);
@@ -94,6 +100,15 @@ export function useGameState() {
       saveState(state);
     }
   }, [state, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      const today = getTodayDateString();
+      if (state.lastSleepDate !== today && !hasDismissedSleepModal) {
+        setShowSleepModal(true);
+      }
+    }
+  }, [isLoaded, state.lastSleepDate, hasDismissedSleepModal]);
 
   useEffect(() => {
     if (mode !== "idle") {
@@ -120,13 +135,26 @@ export function useGameState() {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as GameState;
-        checkMidnightReset(parsed);
-        checkDailyReset(parsed);
-        setState(parsed);
+        const parsed = JSON.parse(stored) as Partial<GameState>;
+        const stateWithDefaults = { ...initialState, ...parsed };
+
+        // Also handle nested state objects like vowState
+        if (parsed.vowState) {
+          stateWithDefaults.vowState = {
+            ...initialState.vowState,
+            ...parsed.vowState,
+          };
+        }
+
+        checkMidnightReset(stateWithDefaults);
+        checkDailyReset(stateWithDefaults);
+        setState(stateWithDefaults);
+      } else {
+        setState(initialState);
       }
     } catch (error) {
       console.error("Failed to load state:", error);
+      setState(initialState);
     }
     setIsLoaded(true);
   };
@@ -292,6 +320,63 @@ export function useGameState() {
     return true;
   }, [state.balance, state.vowState.lastVowDate]);
 
+  const addLog = (
+    currentState: GameState,
+    message: string,
+    type: "sleep" | "system" | "reward" = "system",
+  ): GameState => {
+    const newLog = {
+      timestamp: Date.now(),
+      message,
+      type,
+    };
+    const currentLogs = currentState.logs || [];
+    return {
+      ...currentState,
+      logs: [newLog, ...currentLogs.slice(0, 49)], // Prepend and keep max 50 logs
+    };
+  };
+
+  const logSleep = useCallback(
+    (hours: number) => {
+      const today = getTodayDateString();
+      if (state.lastSleepDate === today) {
+        return false; // Already slept today
+      }
+
+      setState((prev) => {
+        let newState = { ...prev };
+        let ceEarned = 0;
+        let logMessage = "";
+
+        if (hours >= 1 && hours <= 5) {
+          ceEarned = 10;
+          logMessage = `Sleep recorded (+10 CE)`;
+        } else if (hours >= 6 && hours <= 8) {
+          ceEarned = 20;
+          logMessage = `Restored Cursed Energy (+20 CE)`;
+        } else {
+          ceEarned = 15; // For 9+ hours
+          logMessage = `Overrested (+15 CE)`;
+        }
+
+        newState.balance += ceEarned;
+        newState = addLog(newState, logMessage, "reward");
+        newState.lastSleepDate = today;
+        return newState;
+      });
+
+      setShowSleepModal(false);
+      return true;
+    },
+    [state.lastSleepDate],
+  );
+
+  const dismissSleepModal = useCallback(() => {
+    setHasDismissedSleepModal(true);
+    setShowSleepModal(false);
+  }, []);
+
   const useRCT = useCallback(() => {
     // Guard clause: RCT cannot be used if not in debt
     if (state.balance >= 0) {
@@ -354,11 +439,14 @@ export function useGameState() {
     canSignVow,
     hasUsedVowToday,
     showVowSuccess,
+    showSleepModal,
     sessionSeconds,
     startStudy,
     startGaming,
     stopTimer,
     signBindingVow,
+    logSleep,
+    dismissSleepModal,
     useRCT,
     dismissVowSuccess,
     resetAllData,

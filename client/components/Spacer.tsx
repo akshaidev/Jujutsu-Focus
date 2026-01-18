@@ -1,20 +1,15 @@
 import { View } from "react-native";
+import { Spacing } from "@/constants/theme";
+
+type Size = keyof typeof Spacing;
 
 type Props = {
-  width?: number;
-  height?: number;
+  size?: Size;
+  horizontal?: boolean;
 };
 
-export default function Spacer(props: Props) {
-  const width: number = props.width ?? 1;
-  const height: number = props.height ?? 1;
-
-  return (
-    <View
-      style={{
-        width,
-        height,
-      }}
-    />
-  );
+export default function Spacer({ size = "md", horizontal = false }: Props) {
+  const value = Spacing[size];
+  const style = horizontal ? { width: value } : { height: value };
+  return <View style={style} />;
 }

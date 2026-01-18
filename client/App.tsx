@@ -9,7 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 
-import RootStackNavigator from "@/navigation/RootStackNavigator";
+import { AppGate } from "@/navigation/AppGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function App() {
@@ -20,7 +20,7 @@ export default function App() {
           <GestureHandlerRootView style={styles.root}>
             <KeyboardProvider>
               <NavigationContainer>
-                <RootStackNavigator />
+                <AppGate />
               </NavigationContainer>
               <StatusBar style="auto" />
             </KeyboardProvider>
