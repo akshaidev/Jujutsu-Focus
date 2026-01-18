@@ -144,6 +144,7 @@ export default function DashboardScreen() {
         <RCTButton
           nceBalance={state.nceBalance}
           rctCredits={state.rctCredits}
+          balance={state.balance}
           onUseRCT={useRCT}
         />
 

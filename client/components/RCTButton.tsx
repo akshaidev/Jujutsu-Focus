@@ -21,6 +21,7 @@ import { BorderRadius, Spacing, Shadows } from "@/constants/theme";
 interface RCTButtonProps {
   nceBalance: number;
   rctCredits: number;
+  balance: number;
   onUseRCT: () => void;
 }
 
@@ -35,12 +36,13 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function RCTButton({
   nceBalance,
   rctCredits,
+  balance,
   onUseRCT,
 }: RCTButtonProps) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.6);
-  const canUse = rctCredits >= 1 && nceBalance >= 1;
+  const canUse = rctCredits >= 1 && nceBalance >= 0.1 && balance < 0;
 
   useEffect(() => {
     if (canUse) {
@@ -93,12 +95,16 @@ export function RCTButton({
         theme.backgroundSecondary,
       ];
 
+  const buttonTitle = "Purify Debt";
+  
   const subtitleText =
     rctCredits === 0
       ? "Earn streak to unlock"
-      : nceBalance === 0
-        ? "No NCE to purify"
-        : `Convert ${nceBalance.toFixed(1)} NCE to CE`;
+      : balance >= 0
+        ? "Only usable in Debt"
+        : nceBalance < 0.1
+          ? "No NCE to purify"
+          : `Convert ${nceBalance.toFixed(1)} NCE to CE`;
 
   return (
     <AnimatedPressable
@@ -140,7 +146,7 @@ export function RCTButton({
               { color: canUse ? "#FFFFFF" : theme.textSecondary },
             ]}
           >
-            Purify Debt
+            {buttonTitle}
           </ThemedText>
           <ThemedText
             style={[

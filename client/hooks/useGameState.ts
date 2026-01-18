@@ -293,18 +293,35 @@ export function useGameState() {
   }, [state.balance, state.vowState.lastVowDate]);
 
   const useRCT = useCallback(() => {
-    if (state.rctCredits < 1 || state.nceBalance < 1) {
+    // Guard clause: RCT cannot be used if not in debt
+    if (state.balance >= 0) {
+      return false;
+    }
+    if (state.rctCredits < 1 || state.nceBalance < 0.1) {
       return false;
     }
 
-    setState((prev) => ({
-      ...prev,
-      balance: Math.round((prev.balance + prev.nceBalance) * 10000) / 10000,
-      nceBalance: 0,
-      rctCredits: prev.rctCredits - 1,
-    }));
+    setState((prev) => {
+      // Calculate the absolute debt
+      const debt = Math.abs(prev.balance);
+      // Calculate heal amount: min of debt and available NCE
+      const healAmount = Math.min(debt, prev.nceBalance);
+      // New balance: guaranteed to cap at 0
+      const newBalance = prev.balance + healAmount;
+      // New NCE balance: preserve excess NCE
+      const newNceBalance = prev.nceBalance - healAmount;
+      
+      console.log(`Purified Debt (+${healAmount.toFixed(2)} CE)`);
+      
+      return {
+        ...prev,
+        balance: Math.round(newBalance * 10000) / 10000,
+        nceBalance: Math.round(newNceBalance * 10000) / 10000,
+        rctCredits: prev.rctCredits - 1,
+      };
+    });
     return true;
-  }, [state.rctCredits, state.nceBalance]);
+  }, [state.rctCredits, state.nceBalance, state.balance]);
 
   const dismissVowSuccess = useCallback(() => {
     setShowVowSuccess(false);
