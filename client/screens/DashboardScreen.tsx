@@ -157,6 +157,7 @@ export default function DashboardScreen() {
             canSignVow={canSignVow}
             hasUsedVowToday={hasUsedVowToday}
             graceTimeSeconds={availableGraceTime}
+            vowStartedAt={state.vowState.startedAt}
             onSignVow={signBindingVow}
           />
         ) : null}

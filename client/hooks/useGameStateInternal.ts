@@ -11,6 +11,8 @@ export interface VowState {
   graceTimeSeconds: number;
   usedGraceSeconds: number;
   lastVowDate: string | null;
+  debtAtVowStart: number;
+  vowPenaltyUntil: number | null;
 }
 
 export interface GameState {
@@ -39,6 +41,8 @@ const initialVowState: VowState = {
   graceTimeSeconds: 0,
   usedGraceSeconds: 0,
   lastVowDate: null,
+  debtAtVowStart: 0,
+  vowPenaltyUntil: null,
 };
 
 const initialState: GameState = {
@@ -227,13 +231,40 @@ export function useGameStateInternal() {
         newState.totalStudySeconds = prev.totalStudySeconds + 1;
         newState.dailyStudySeconds = (prev.dailyStudySeconds || 0) + 1;
 
-        if (prev.streakDays > 0 || prev.vowState.isActive) {
+        // NCE only earned from streak, NOT from binding vow
+        if (prev.streakDays > 0) {
           const ncePerSecond = 0.5 / 60;
           newState.nceBalance =
             Math.round((prev.nceBalance + ncePerSecond) * 10000) / 10000;
         }
 
         if (prev.vowState.isActive) {
+          const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+          const PENALTY_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
+          const elapsed = Date.now() - (prev.vowState.startedAt || 0);
+
+          // Check if 24 hours expired - apply penalty
+          if (elapsed >= VOW_DURATION_MS && newState.balance < 0) {
+            const currentDebtAbs = Math.abs(newState.balance);
+            const penaltyAmount = Math.max(prev.vowState.debtAtVowStart, currentDebtAbs);
+            newState.balance = Math.round((newState.balance - penaltyAmount) * 10000) / 10000;
+            newState.vowState = {
+              ...initialVowState,
+              lastVowDate: prev.vowState.lastVowDate,
+              vowPenaltyUntil: Date.now() + PENALTY_DURATION_MS,
+            };
+            newState.logs = [
+              {
+                timestamp: Date.now(),
+                message: `Binding Vow Failed - Debt increased by ${penaltyAmount.toFixed(1)} CE`,
+                type: "vow" as const,
+                value: -penaltyAmount,
+              },
+              ...(newState.logs || []),
+            ].slice(0, 99);
+            return newState;
+          }
+
           const graceEarned = 0.2;
           newState.vowState = {
             ...prev.vowState,
@@ -332,12 +363,21 @@ export function useGameStateInternal() {
 
   const signBindingVow = useCallback(() => {
     const today = getTodayDateString();
+    const now = Date.now();
+
+    // Check if in penalty period (6 hours after failed vow)
+    if (state.vowState.vowPenaltyUntil && now < state.vowState.vowPenaltyUntil) {
+      return false;
+    }
+
     if (state.vowState.lastVowDate === today) {
       return false;
     }
     if (state.balance >= 0) {
       return false;
     }
+
+    const currentDebt = Math.abs(state.balance);
 
     setState((prev) => ({
       ...prev,
@@ -348,6 +388,8 @@ export function useGameStateInternal() {
         graceTimeSeconds: 0,
         usedGraceSeconds: 0,
         lastVowDate: today,
+        debtAtVowStart: currentDebt,
+        vowPenaltyUntil: null,
       },
       logs: [
         {
@@ -359,7 +401,7 @@ export function useGameStateInternal() {
       ].slice(0, 99),
     }));
     return true;
-  }, [state.balance, state.vowState.lastVowDate]);
+  }, [state.balance, state.vowState.lastVowDate, state.vowState.vowPenaltyUntil]);
 
   const addLog = (
     currentState: GameState,
@@ -478,8 +520,13 @@ export function useGameStateInternal() {
     0,
     state.vowState.graceTimeSeconds - state.vowState.usedGraceSeconds,
   );
+  const isInPenaltyPeriod =
+    state.vowState.vowPenaltyUntil !== null &&
+    Date.now() < state.vowState.vowPenaltyUntil;
   const canSignVow =
-    state.balance < 0 && state.vowState.lastVowDate !== getTodayDateString();
+    state.balance < 0 &&
+    state.vowState.lastVowDate !== getTodayDateString() &&
+    !isInPenaltyPeriod;
   const hasUsedVowToday = state.vowState.lastVowDate === getTodayDateString();
 
   return {

@@ -1,19 +1,18 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-  withRepeat,
   withTiming,
+  withRepeat,
   Easing,
-  WithSpringConfig,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { GlassCard } from "@/components/GlassCard";
 import { ThemedText } from "@/components/ThemedText";
+import { BindingVowConfirmModal } from "@/components/BindingVowConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing } from "@/constants/theme";
 
@@ -22,14 +21,9 @@ interface BindingVowWidgetProps {
   canSignVow: boolean;
   hasUsedVowToday: boolean;
   graceTimeSeconds: number;
+  vowStartedAt: number | null;
   onSignVow: () => void;
 }
-
-const springConfig: WithSpringConfig = {
-  damping: 15,
-  mass: 0.3,
-  stiffness: 150,
-};
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -37,20 +31,46 @@ function formatTime(seconds: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
+function formatTimeWithHours(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in ms
 
 export function BindingVowWidget({
   isVowActive,
   canSignVow,
   hasUsedVowToday,
   graceTimeSeconds,
+  vowStartedAt,
   onSignVow,
 }: BindingVowWidgetProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
   const pulseOpacity = useSharedValue(0.5);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState(0);
 
-  React.useEffect(() => {
+  // Calculate and update 24hr countdown
+  useEffect(() => {
+    if (isVowActive && vowStartedAt) {
+      const updateTimeLeft = () => {
+        const elapsed = Date.now() - vowStartedAt;
+        const remaining = Math.max(0, VOW_DURATION_MS - elapsed);
+        setTimeLeftSeconds(Math.floor(remaining / 1000));
+      };
+
+      updateTimeLeft();
+      const interval = setInterval(updateTimeLeft, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isVowActive, vowStartedAt]);
+
+  useEffect(() => {
     if (isVowActive) {
       pulseOpacity.value = withRepeat(
         withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
@@ -70,19 +90,28 @@ export function BindingVowWidget({
 
   const handlePressIn = () => {
     if (canSignVow) {
-      scale.value = withSpring(0.98, springConfig);
+      scale.value = withTiming(0.98, { duration: 100, easing: Easing.out(Easing.quad) });
     }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, springConfig);
+    scale.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.quad) });
   };
 
   const handlePress = () => {
     if (canSignVow) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onSignVow();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setShowConfirmModal(true);
     }
+  };
+
+  const handleConfirmVow = () => {
+    setShowConfirmModal(false);
+    onSignVow();
+  };
+
+  const handleCancelVow = () => {
+    setShowConfirmModal(false);
   };
 
   if (isVowActive) {
@@ -98,15 +127,35 @@ export function BindingVowWidget({
             Binding Vow Active
           </ThemedText>
         </View>
-        <View style={styles.graceContainer}>
-          <ThemedText
-            style={[styles.graceLabel, { color: theme.textSecondary }]}
-          >
-            Grace Time Available
-          </ThemedText>
-          <ThemedText style={[styles.graceTime, { color: theme.cursedEnergy }]}>
-            {formatTime(graceTimeSeconds)}
-          </ThemedText>
+
+        {/* Two timers side by side */}
+        <View style={styles.timersRow}>
+          {/* Grace Time */}
+          <View style={styles.timerBox}>
+            <ThemedText
+              style={[styles.timerLabel, { color: theme.textSecondary }]}
+            >
+              Grace Time
+            </ThemedText>
+            <ThemedText style={[styles.timerValue, { color: theme.cursedEnergy }]}>
+              {formatTime(graceTimeSeconds)}
+            </ThemedText>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.timerDivider, { backgroundColor: theme.glassBorder }]} />
+
+          {/* 24hr Countdown */}
+          <View style={styles.timerBox}>
+            <ThemedText
+              style={[styles.timerLabel, { color: theme.textSecondary }]}
+            >
+              Time Left
+            </ThemedText>
+            <ThemedText style={[styles.timerValue, { color: theme.debt }]}>
+              {formatTimeWithHours(timeLeftSeconds)}
+            </ThemedText>
+          </View>
         </View>
       </GlassCard>
     );
@@ -115,46 +164,54 @@ export function BindingVowWidget({
   const isDisabled = !canSignVow && hasUsedVowToday;
 
   return (
-    <AnimatedPressable
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={isDisabled}
-      style={[animatedStyle, isDisabled && styles.disabled]}
-    >
-      <GlassCard
-        variant={isDisabled ? "default" : "danger"}
-        style={styles.card}
+    <>
+      <AnimatedPressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        style={[animatedStyle, isDisabled && styles.disabled]}
       >
-        <View style={styles.signContainer}>
-          <Feather
-            name="shield"
-            size={24}
-            color={isDisabled ? theme.textSecondary : theme.debt}
-          />
-          <View style={styles.signTextContainer}>
-            <ThemedText
-              style={[
-                styles.signTitle,
-                { color: isDisabled ? theme.textSecondary : theme.text },
-              ]}
-            >
-              {isDisabled ? "Limit Reached" : "Sign Binding Vow"}
-            </ThemedText>
-            <ThemedText
-              style={[styles.signSubtitle, { color: theme.textSecondary }]}
-            >
-              {isDisabled
-                ? "1 vow per day, come back tomorrow"
-                : "+0.5 CE/min boost and earn grace time"}
-            </ThemedText>
+        <GlassCard
+          variant={isDisabled ? "default" : "danger"}
+          style={styles.card}
+        >
+          <View style={styles.signContainer}>
+            <Feather
+              name="shield"
+              size={24}
+              color={isDisabled ? theme.textSecondary : theme.debt}
+            />
+            <View style={styles.signTextContainer}>
+              <ThemedText
+                style={[
+                  styles.signTitle,
+                  { color: isDisabled ? theme.textSecondary : theme.text },
+                ]}
+              >
+                {isDisabled ? "Limit Reached" : "Sign Binding Vow"}
+              </ThemedText>
+              <ThemedText
+                style={[styles.signSubtitle, { color: theme.textSecondary }]}
+              >
+                {isDisabled
+                  ? "1 vow per day, come back tomorrow"
+                  : "+0.5 CE/min boost and earn grace time"}
+              </ThemedText>
+            </View>
+            {!isDisabled ? (
+              <Feather name="chevron-right" size={20} color={theme.debt} />
+            ) : null}
           </View>
-          {!isDisabled ? (
-            <Feather name="chevron-right" size={20} color={theme.debt} />
-          ) : null}
-        </View>
-      </GlassCard>
-    </AnimatedPressable>
+        </GlassCard>
+      </AnimatedPressable>
+
+      <BindingVowConfirmModal
+        visible={showConfirmModal}
+        onConfirm={handleConfirmVow}
+        onCancel={handleCancelVow}
+      />
+    </>
   );
 }
 
@@ -175,16 +232,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  graceContainer: {
+  timersRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  timerBox: {
+    flex: 1,
     alignItems: "center",
     paddingVertical: Spacing.sm,
   },
-  graceLabel: {
-    fontSize: 14,
+  timerDivider: {
+    width: 1,
+    height: 40,
+    opacity: 0.5,
+  },
+  timerLabel: {
+    fontSize: 12,
     marginBottom: Spacing.xs,
   },
-  graceTime: {
-    fontSize: 32,
+  timerValue: {
+    fontSize: 24,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
