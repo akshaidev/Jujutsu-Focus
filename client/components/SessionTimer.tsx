@@ -79,9 +79,15 @@ export function SessionTimer({
         </ThemedText>
       </View>
 
+      {/* Divider */}
+      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.sm }} />
+
       <ThemedText style={[styles.sessionTime, { color: theme.text }]}>
         {formatTime(sessionSeconds)}
       </ThemedText>
+
+      {/* Divider */}
+      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.sm }} />
 
       <View
         style={[styles.dailyContainer, { borderTopColor: theme.glassBorder }]}
