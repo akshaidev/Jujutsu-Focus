@@ -15,6 +15,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { BindingVowConfirmModal } from "@/components/BindingVowConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing } from "@/constants/theme";
+import { getServerTime } from "@/utils/timeService";
 
 interface BindingVowWidgetProps {
   isVowActive: boolean;
@@ -62,7 +63,7 @@ export function BindingVowWidget({
   useEffect(() => {
     if (isVowActive && vowStartedAt) {
       const updateTimeLeft = () => {
-        const elapsed = Date.now() - vowStartedAt;
+        const elapsed = getServerTime() - vowStartedAt;
         const remaining = Math.max(0, VOW_DURATION_MS - elapsed);
         setTimeLeftSeconds(Math.floor(remaining / 1000));
       };
@@ -75,9 +76,9 @@ export function BindingVowWidget({
 
   // Calculate and update penalty countdown
   useEffect(() => {
-    if (vowPenaltyUntil && Date.now() < vowPenaltyUntil) {
+    if (vowPenaltyUntil && getServerTime() < vowPenaltyUntil) {
       const updatePenaltyTimeLeft = () => {
-        const remaining = Math.max(0, vowPenaltyUntil - Date.now());
+        const remaining = Math.max(0, vowPenaltyUntil - getServerTime());
         setPenaltyTimeLeftSeconds(Math.floor(remaining / 1000));
       };
 

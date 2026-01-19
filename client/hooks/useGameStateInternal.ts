@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  syncServerTime,
+  getServerTime,
+  getServerTodayString,
+  getServerDate
+} from "@/utils/timeService";
 
 const STORAGE_KEY = "@jujutsu_focus_state";
 const TICK_INTERVAL = 1000;
@@ -76,8 +82,9 @@ function getEarningRate(balance: number, vowActive: boolean): number {
   return vowActive ? baseRate + 0.5 : baseRate;
 }
 
+// Use server time for all date calculations to prevent device time manipulation
 function getTodayDateString(): string {
-  return new Date().toISOString().split("T")[0];
+  return getServerTodayString();
 }
 
 export function useGameStateInternal() {
@@ -95,8 +102,13 @@ export function useGameStateInternal() {
     stateRef.current = state;
   }, [state]);
 
+  // Sync server time on app start, then load state
   useEffect(() => {
-    loadState();
+    const initApp = async () => {
+      await syncServerTime(); // Sync time first to prevent manipulation
+      loadState();
+    };
+    initApp();
   }, []);
 
   useEffect(() => {
@@ -145,7 +157,7 @@ export function useGameStateInternal() {
       loadedState.vowState.startedAt &&
       loadedState.balance < 0
     ) {
-      const elapsed = Date.now() - loadedState.vowState.startedAt;
+      const elapsed = getServerTime() - loadedState.vowState.startedAt;
 
       if (elapsed >= VOW_DURATION_MS) {
         // Vow expired while still in debt - apply penalty
@@ -156,11 +168,11 @@ export function useGameStateInternal() {
         loadedState.vowState = {
           ...initialVowState,
           lastVowDate: loadedState.vowState.lastVowDate,
-          vowPenaltyUntil: Date.now() + PENALTY_DURATION_MS,
+          vowPenaltyUntil: getServerTime() + PENALTY_DURATION_MS,
         };
         loadedState.logs = [
           {
-            timestamp: Date.now(),
+            timestamp: getServerTime(),
             message: `Binding Vow Failed - Debt increased by ${penaltyAmount.toFixed(1)} CE`,
             type: "vow" as const,
             value: -penaltyAmount,
@@ -221,7 +233,7 @@ export function useGameStateInternal() {
   const checkMidnightReset = (loadedState: GameState) => {
     const today = getTodayDateString();
     if (loadedState.lastBalanceDate && loadedState.lastBalanceDate !== today) {
-      const yesterday = new Date();
+      const yesterday = getServerDate();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split("T")[0];
 
@@ -279,7 +291,7 @@ export function useGameStateInternal() {
         if (prev.vowState.isActive) {
           const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
           const PENALTY_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
-          const elapsed = Date.now() - (prev.vowState.startedAt || 0);
+          const elapsed = getServerTime() - (prev.vowState.startedAt || 0);
 
           // Check if 24 hours expired - apply penalty
           if (elapsed >= VOW_DURATION_MS && newState.balance < 0) {
@@ -289,11 +301,11 @@ export function useGameStateInternal() {
             newState.vowState = {
               ...initialVowState,
               lastVowDate: prev.vowState.lastVowDate,
-              vowPenaltyUntil: Date.now() + PENALTY_DURATION_MS,
+              vowPenaltyUntil: getServerTime() + PENALTY_DURATION_MS,
             };
             newState.logs = [
               {
-                timestamp: Date.now(),
+                timestamp: getServerTime(),
                 message: `Binding Vow Failed - Debt increased by ${penaltyAmount.toFixed(1)} CE`,
                 type: "vow" as const,
                 value: -penaltyAmount,
@@ -381,7 +393,7 @@ export function useGameStateInternal() {
         }
 
         const newLog = {
-          timestamp: Date.now(),
+          timestamp: getServerTime(),
           message: logMessage,
           type: mode === "study" ? "session" : "session",
           value: value,
@@ -401,7 +413,7 @@ export function useGameStateInternal() {
 
   const signBindingVow = useCallback(() => {
     const today = getTodayDateString();
-    const now = Date.now();
+    const now = getServerTime();
 
     // Check if in penalty period (6 hours after failed vow)
     if (state.vowState.vowPenaltyUntil && now < state.vowState.vowPenaltyUntil) {
@@ -421,7 +433,7 @@ export function useGameStateInternal() {
       ...prev,
       vowState: {
         isActive: true,
-        startedAt: Date.now(),
+        startedAt: getServerTime(),
         studySecondsWhileVow: 0,
         graceTimeSeconds: 0,
         usedGraceSeconds: 0,
@@ -431,7 +443,7 @@ export function useGameStateInternal() {
       },
       logs: [
         {
-          timestamp: Date.now(),
+          timestamp: getServerTime(),
           message: "Binding Vow Signed - Sacred contract activated",
           type: "vow" as const,
         },
@@ -448,7 +460,7 @@ export function useGameStateInternal() {
     value?: number,
   ): GameState => {
     const newLog = {
-      timestamp: Date.now(),
+      timestamp: getServerTime(),
       message,
       type,
       value,
@@ -528,7 +540,7 @@ export function useGameStateInternal() {
         rctCredits: prev.rctCredits - 1,
         logs: [
           {
-            timestamp: Date.now(),
+            timestamp: getServerTime(),
             message: `Reverse Cursed Technique - Purified ${healAmount.toFixed(2)} units of debt`,
             type: "rct" as const,
             value: healAmount,
@@ -560,7 +572,7 @@ export function useGameStateInternal() {
   );
   const isInPenaltyPeriod =
     state.vowState.vowPenaltyUntil !== null &&
-    Date.now() < state.vowState.vowPenaltyUntil;
+    getServerTime() < state.vowState.vowPenaltyUntil;
   const canSignVow =
     state.balance < 0 &&
     state.vowState.lastVowDate !== getTodayDateString() &&
