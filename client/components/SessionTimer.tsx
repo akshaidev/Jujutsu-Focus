@@ -70,30 +70,26 @@ export function SessionTimer({
       <View
         style={[styles.tintOverlay, { backgroundColor: getBackgroundTint() }]}
       />
+
+      {/* Header - Mode Label */}
       <View style={styles.header}>
         <Animated.View style={pulseStyle}>
-          <Feather name={icon} size={18} color={accentColor} />
+          <Feather name={icon} size={16} color={accentColor} />
         </Animated.View>
         <ThemedText style={[styles.modeLabel, { color: accentColor }]}>
           {modeLabel}
         </ThemedText>
       </View>
 
-      {/* Divider */}
-      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.xs }} />
-
+      {/* Main Timer - Prominent Display */}
       <View style={styles.sessionTimeContainer}>
         <ThemedText style={[styles.sessionTime, { color: theme.text }]}>
           {formatTime(sessionSeconds)}
         </ThemedText>
       </View>
 
-      {/* Divider */}
-      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.xs }} />
-
-      <View
-        style={[styles.dailyContainer, { borderTopColor: theme.glassBorder }]}
-      >
+      {/* Daily Total - Compact Footer */}
+      <View style={styles.dailyContainer}>
         <ThemedText style={[styles.dailyLabel, { color: theme.textSecondary }]}>
           {dailyLabel}
         </ThemedText>
@@ -136,7 +132,8 @@ const styles = StyleSheet.create({
   },
   innerContent: {
     alignItems: "center",
-    padding: Spacing["2xl"],
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
     overflow: "hidden",
@@ -148,21 +145,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    gap: Spacing.xs,
   },
   modeLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   sessionTimeContainer: {
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.lg,
   },
   sessionTime: {
-    fontSize: 52,
+    fontSize: 56,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
-    letterSpacing: -1,
+    letterSpacing: -2,
+    lineHeight: 64,
   },
   dailyContainer: {
     flexDirection: "row",
@@ -170,15 +167,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "100%",
     gap: Spacing.sm,
-    marginTop: Spacing.md,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
+    paddingTop: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(150, 150, 150, 0.3)",
   },
   dailyLabel: {
-    fontSize: 13,
+    fontSize: 12,
   },
   dailyTime: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },
