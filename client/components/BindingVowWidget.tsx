@@ -22,6 +22,7 @@ interface BindingVowWidgetProps {
   hasUsedVowToday: boolean;
   graceTimeSeconds: number;
   vowStartedAt: number | null;
+  vowPenaltyUntil: number | null;
   onSignVow: () => void;
 }
 
@@ -47,6 +48,7 @@ export function BindingVowWidget({
   hasUsedVowToday,
   graceTimeSeconds,
   vowStartedAt,
+  vowPenaltyUntil,
   onSignVow,
 }: BindingVowWidgetProps) {
   const { theme } = useTheme();
@@ -54,6 +56,7 @@ export function BindingVowWidget({
   const pulseOpacity = useSharedValue(0.5);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [timeLeftSeconds, setTimeLeftSeconds] = useState(0);
+  const [penaltyTimeLeftSeconds, setPenaltyTimeLeftSeconds] = useState(0);
 
   // Calculate and update 24hr countdown
   useEffect(() => {
@@ -69,6 +72,22 @@ export function BindingVowWidget({
       return () => clearInterval(interval);
     }
   }, [isVowActive, vowStartedAt]);
+
+  // Calculate and update penalty countdown
+  useEffect(() => {
+    if (vowPenaltyUntil && Date.now() < vowPenaltyUntil) {
+      const updatePenaltyTimeLeft = () => {
+        const remaining = Math.max(0, vowPenaltyUntil - Date.now());
+        setPenaltyTimeLeftSeconds(Math.floor(remaining / 1000));
+      };
+
+      updatePenaltyTimeLeft();
+      const interval = setInterval(updatePenaltyTimeLeft, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setPenaltyTimeLeftSeconds(0);
+    }
+  }, [vowPenaltyUntil]);
 
   useEffect(() => {
     if (isVowActive) {
@@ -161,7 +180,23 @@ export function BindingVowWidget({
     );
   }
 
-  const isDisabled = !canSignVow && hasUsedVowToday;
+  const isInPenaltyPeriod = penaltyTimeLeftSeconds > 0;
+  const isDisabled = !canSignVow || isInPenaltyPeriod;
+
+  // Get disabled state text
+  const getDisabledTitle = () => {
+    if (isInPenaltyPeriod) return "Vow Recoiled";
+    if (hasUsedVowToday) return "Limit Reached";
+    return "Sign Binding Vow";
+  };
+
+  const getDisabledSubtitle = () => {
+    if (isInPenaltyPeriod) {
+      return `Available in ${formatTimeWithHours(penaltyTimeLeftSeconds)}`;
+    }
+    if (hasUsedVowToday) return "1 vow per day, come back tomorrow";
+    return "+0.5 CE/min boost and earn grace time";
+  };
 
   return (
     <>
@@ -189,14 +224,12 @@ export function BindingVowWidget({
                   { color: isDisabled ? theme.textSecondary : theme.text },
                 ]}
               >
-                {isDisabled ? "Limit Reached" : "Sign Binding Vow"}
+                {getDisabledTitle()}
               </ThemedText>
               <ThemedText
-                style={[styles.signSubtitle, { color: theme.textSecondary }]}
+                style={[styles.signSubtitle, { color: isInPenaltyPeriod ? theme.debt : theme.textSecondary }]}
               >
-                {isDisabled
-                  ? "1 vow per day, come back tomorrow"
-                  : "+0.5 CE/min boost and earn grace time"}
+                {getDisabledSubtitle()}
               </ThemedText>
             </View>
             {!isDisabled ? (

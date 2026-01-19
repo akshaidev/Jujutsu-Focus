@@ -135,12 +135,49 @@ export function useGameStateInternal() {
     };
   }, [mode]);
 
+  const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+  const PENALTY_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+  const checkExpiredVow = (loadedState: GameState): GameState => {
+    // Check if there's an active vow that has expired
+    if (
+      loadedState.vowState.isActive &&
+      loadedState.vowState.startedAt &&
+      loadedState.balance < 0
+    ) {
+      const elapsed = Date.now() - loadedState.vowState.startedAt;
+
+      if (elapsed >= VOW_DURATION_MS) {
+        // Vow expired while still in debt - apply penalty
+        const currentDebtAbs = Math.abs(loadedState.balance);
+        const penaltyAmount = Math.max(loadedState.vowState.debtAtVowStart, currentDebtAbs);
+
+        loadedState.balance = Math.round((loadedState.balance - penaltyAmount) * 10000) / 10000;
+        loadedState.vowState = {
+          ...initialVowState,
+          lastVowDate: loadedState.vowState.lastVowDate,
+          vowPenaltyUntil: Date.now() + PENALTY_DURATION_MS,
+        };
+        loadedState.logs = [
+          {
+            timestamp: Date.now(),
+            message: `Binding Vow Failed - Debt increased by ${penaltyAmount.toFixed(1)} CE`,
+            type: "vow" as const,
+            value: -penaltyAmount,
+          },
+          ...(loadedState.logs || []),
+        ].slice(0, 99);
+      }
+    }
+    return loadedState;
+  };
+
   const loadState = async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as Partial<GameState>;
-        const stateWithDefaults = { ...initialState, ...parsed };
+        let stateWithDefaults = { ...initialState, ...parsed };
 
         // Also handle nested state objects like vowState
         if (parsed.vowState) {
@@ -152,6 +189,7 @@ export function useGameStateInternal() {
 
         checkMidnightReset(stateWithDefaults);
         checkDailyReset(stateWithDefaults);
+        stateWithDefaults = checkExpiredVow(stateWithDefaults);
         setState(stateWithDefaults);
       } else {
         setState(initialState);
