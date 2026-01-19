@@ -6,8 +6,8 @@ import { Pressable } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-  WithSpringConfig,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
@@ -17,19 +17,12 @@ import { BorderRadius, Spacing, Shadows } from "@/constants/theme";
 
 interface ControlButtonProps {
   icon: keyof typeof Feather.glyphMap;
-  label: string;
+  label?: string;
   onPress: () => void;
   isActive?: boolean;
   activeLabel?: string;
   variant?: "study" | "gaming";
 }
-
-const springConfig: WithSpringConfig = {
-  damping: 15,
-  mass: 0.4,
-  stiffness: 120,
-  overshootClamping: false,
-};
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -49,11 +42,17 @@ export function ControlButton({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.95, springConfig);
+    scale.value = withTiming(0.96, {
+      duration: 100,
+      easing: Easing.out(Easing.quad),
+    });
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, springConfig);
+    scale.value = withTiming(1, {
+      duration: 150,
+      easing: Easing.out(Easing.quad),
+    });
   };
 
   const handlePress = () => {
@@ -80,11 +79,13 @@ export function ControlButton({
         size={28}
         color={isActive ? "#FFFFFF" : theme.text}
       />
-      <ThemedText
-        style={[styles.label, { color: isActive ? "#FFFFFF" : theme.text }]}
-      >
-        {isActive ? activeLabel : label}
-      </ThemedText>
+      {(label || isActive) && (
+        <ThemedText
+          style={[styles.label, { color: isActive ? "#FFFFFF" : theme.text }]}
+        >
+          {isActive ? activeLabel : label}
+        </ThemedText>
+      )}
     </View>
   );
 

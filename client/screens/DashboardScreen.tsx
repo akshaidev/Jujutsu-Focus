@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { StyleSheet, View, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  Easing,
+} from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { useGameState } from "@/hooks/useGameState";
@@ -100,9 +105,9 @@ export default function DashboardScreen() {
 
         {isActive ? (
           <Animated.View
-            entering={FadeIn.duration(200).springify().damping(20)}
-            exiting={FadeOut.duration(150)}
-            layout={Layout.springify().damping(18)}
+            entering={FadeIn.duration(250).easing(Easing.out(Easing.quad))}
+            exiting={FadeOut.duration(200).easing(Easing.in(Easing.quad))}
+            layout={LinearTransition.duration(250).easing(Easing.out(Easing.quad))}
             style={styles.timerContainer}
           >
             <SessionTimer
@@ -118,7 +123,7 @@ export default function DashboardScreen() {
         ) : null}
 
         <Animated.View
-          layout={Layout.springify().damping(18).stiffness(120)}
+          layout={LinearTransition.duration(250).easing(Easing.out(Easing.quad))}
           style={styles.controlDeck}
         >
           <ControlButton

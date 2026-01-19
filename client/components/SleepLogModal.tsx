@@ -11,15 +11,14 @@ import { BlurView } from "expo-blur";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
+  Easing,
   runOnJS,
 } from "react-native-reanimated";
 
-const springConfig = {
-  damping: 18,
-  stiffness: 250,
-  mass: 0.9,
+const animationConfig = {
+  duration: 300,
+  easing: Easing.bezier(0.25, 0.1, 0.25, 1),
 };
 
 export function SleepLogModal() {
@@ -34,8 +33,8 @@ export function SleepLogModal() {
   useEffect(() => {
     if (showSleepModal) {
       setIsModalVisible(true);
-      scale.value = withSpring(1, springConfig);
-      opacity.value = withTiming(1, { duration: 150 });
+      scale.value = withTiming(1, animationConfig);
+      opacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) });
     }
   }, [showSleepModal]);
 
@@ -47,8 +46,8 @@ export function SleepLogModal() {
   });
 
   const handleClose = (callback: () => void) => {
-    scale.value = withSpring(0.9, springConfig);
-    opacity.value = withTiming(0, { duration: 200 }, () => {
+    scale.value = withTiming(0.95, { duration: 200, easing: Easing.in(Easing.quad) });
+    opacity.value = withTiming(0, { duration: 200, easing: Easing.in(Easing.quad) }, () => {
       runOnJS(callback)();
       runOnJS(setIsModalVisible)(false);
     });

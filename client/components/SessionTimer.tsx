@@ -80,14 +80,16 @@ export function SessionTimer({
       </View>
 
       {/* Divider */}
-      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.sm }} />
+      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.xs }} />
 
-      <ThemedText style={[styles.sessionTime, { color: theme.text }]}>
-        {formatTime(sessionSeconds)}
-      </ThemedText>
+      <View style={styles.sessionTimeContainer}>
+        <ThemedText style={[styles.sessionTime, { color: theme.text }]}>
+          {formatTime(sessionSeconds)}
+        </ThemedText>
+      </View>
 
       {/* Divider */}
-      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.sm }} />
+      <View style={{ height: 1, backgroundColor: theme.textSecondary, opacity: 0.3, marginVertical: Spacing.xs }} />
 
       <View
         style={[styles.dailyContainer, { borderTopColor: theme.glassBorder }]}
@@ -134,7 +136,7 @@ const styles = StyleSheet.create({
   },
   innerContent: {
     alignItems: "center",
-    padding: Spacing.xl,
+    padding: Spacing["2xl"],
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
     overflow: "hidden",
@@ -153,8 +155,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  sessionTimeContainer: {
+    paddingVertical: Spacing.md,
+  },
   sessionTime: {
-    fontSize: 48,
+    fontSize: 52,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
     letterSpacing: -1,
