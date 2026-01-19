@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   syncServerTime,
@@ -36,6 +37,9 @@ export interface GameState {
   lastDailyResetDate: string | null;
   lastSleepDate: string | null;
   logs: any[];
+  // Active session tracking for background time
+  activeSessionMode: Mode | null;
+  activeSessionStartTime: number | null;
 }
 
 export type Mode = "idle" | "study" | "gaming";
@@ -66,6 +70,8 @@ const initialState: GameState = {
   lastDailyResetDate: null,
   lastSleepDate: null,
   logs: [],
+  activeSessionMode: null,
+  activeSessionStartTime: null,
 };
 
 function getEarningRate(balance: number, vowActive: boolean): number {
@@ -147,6 +153,31 @@ export function useGameStateInternal() {
     };
   }, [mode]);
 
+  // Handle app returning from background - sync elapsed time
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active" && isLoaded) {
+        // App came to foreground - sync time if session was active
+        setState((prev) => {
+          if (prev.activeSessionMode && prev.activeSessionStartTime) {
+            const now = getServerTime();
+            const elapsedSeconds = Math.floor((now - prev.activeSessionStartTime) / 1000);
+
+            // Update session counter to reflect total elapsed time
+            setSessionSeconds(elapsedSeconds);
+
+            // Re-sync server time in case device time changed
+            syncServerTime();
+          }
+          return prev;
+        });
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => subscription?.remove();
+  }, [isLoaded]);
+
   const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
   const PENALTY_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
 
@@ -184,6 +215,96 @@ export function useGameStateInternal() {
     return loadedState;
   };
 
+  // Apply background time when app was closed with an active session
+  const applyBackgroundTime = (loadedState: GameState): GameState => {
+    if (!loadedState.activeSessionMode || !loadedState.activeSessionStartTime) {
+      return loadedState;
+    }
+
+    const now = getServerTime();
+    const elapsedSeconds = Math.floor((now - loadedState.activeSessionStartTime) / 1000);
+
+    if (elapsedSeconds <= 0) {
+      return loadedState;
+    }
+
+    const sessionMode = loadedState.activeSessionMode;
+
+    if (sessionMode === "study") {
+      const earningRate = getEarningRate(loadedState.balance, loadedState.vowState.isActive);
+      const cePerSecond = earningRate / 60;
+      const ceEarned = cePerSecond * elapsedSeconds;
+
+      loadedState.balance = Math.round((loadedState.balance + ceEarned) * 10000) / 10000;
+      loadedState.totalStudySeconds += elapsedSeconds;
+      loadedState.dailyStudySeconds = (loadedState.dailyStudySeconds || 0) + elapsedSeconds;
+
+      // NCE earned from streak
+      if (loadedState.streakDays > 0) {
+        const ncePerSecond = 0.5 / 60;
+        loadedState.nceBalance = Math.round((loadedState.nceBalance + ncePerSecond * elapsedSeconds) * 10000) / 10000;
+      }
+
+      // Grace time if vow active
+      if (loadedState.vowState.isActive) {
+        const graceEarned = 0.2 * elapsedSeconds;
+        loadedState.vowState = {
+          ...loadedState.vowState,
+          studySecondsWhileVow: loadedState.vowState.studySecondsWhileVow + elapsedSeconds,
+          graceTimeSeconds: Math.round((loadedState.vowState.graceTimeSeconds + graceEarned) * 100) / 100,
+        };
+      }
+
+      loadedState.logs = [
+        {
+          timestamp: now,
+          message: `Background Focus Session (+${ceEarned.toFixed(1)} CE in ${Math.floor(elapsedSeconds / 60)}m)`,
+          type: "session" as const,
+          value: ceEarned,
+        },
+        ...(loadedState.logs || []),
+      ].slice(0, 99);
+
+    } else if (sessionMode === "gaming") {
+      const cePerSecond = 1.0 / 60;
+      let ceSpent = 0;
+
+      if (loadedState.vowState.isActive) {
+        const availableGrace = loadedState.vowState.graceTimeSeconds - loadedState.vowState.usedGraceSeconds;
+        const graceUsed = Math.min(availableGrace, elapsedSeconds);
+        const ceSeconds = elapsedSeconds - graceUsed;
+        ceSpent = cePerSecond * ceSeconds;
+        loadedState.vowState = {
+          ...loadedState.vowState,
+          usedGraceSeconds: Math.round((loadedState.vowState.usedGraceSeconds + graceUsed) * 100) / 100,
+        };
+      } else {
+        ceSpent = cePerSecond * elapsedSeconds;
+      }
+
+      loadedState.balance = Math.round((loadedState.balance - ceSpent) * 10000) / 10000;
+      loadedState.totalGamingSeconds += elapsedSeconds;
+      loadedState.dailyGamingSeconds = (loadedState.dailyGamingSeconds || 0) + elapsedSeconds;
+
+      loadedState.logs = [
+        {
+          timestamp: now,
+          message: `Background Leisure Session (-${ceSpent.toFixed(1)} CE in ${Math.floor(elapsedSeconds / 60)}m)`,
+          type: "session" as const,
+          value: -ceSpent,
+        },
+        ...(loadedState.logs || []),
+      ].slice(0, 99);
+    }
+
+    // Clear the active session after applying
+    loadedState.activeSessionMode = null;
+    loadedState.activeSessionStartTime = null;
+
+    console.log(`[BackgroundTimer] Applied ${elapsedSeconds}s of ${sessionMode} time`);
+    return loadedState;
+  };
+
   const loadState = async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
@@ -202,6 +323,7 @@ export function useGameStateInternal() {
         checkMidnightReset(stateWithDefaults);
         checkDailyReset(stateWithDefaults);
         stateWithDefaults = checkExpiredVow(stateWithDefaults);
+        stateWithDefaults = applyBackgroundTime(stateWithDefaults);
         setState(stateWithDefaults);
       } else {
         setState(initialState);
@@ -367,10 +489,20 @@ export function useGameStateInternal() {
   }, [mode]);
 
   const startStudy = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      activeSessionMode: "study" as Mode,
+      activeSessionStartTime: getServerTime(),
+    }));
     setMode("study");
   }, []);
 
   const startGaming = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      activeSessionMode: "gaming" as Mode,
+      activeSessionStartTime: getServerTime(),
+    }));
     setMode("gaming");
   }, []);
 
@@ -403,9 +535,18 @@ export function useGameStateInternal() {
         const currentLogs = prev.logs || [];
         return {
           ...prev,
+          activeSessionMode: null,
+          activeSessionStartTime: null,
           logs: [newLog, ...currentLogs.slice(0, 99)], // Keep max 100 logs
         };
       });
+    } else {
+      // Clear session even if 0 seconds
+      setState((prev) => ({
+        ...prev,
+        activeSessionMode: null,
+        activeSessionStartTime: null,
+      }));
     }
 
     setMode("idle");
