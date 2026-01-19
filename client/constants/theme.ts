@@ -158,7 +158,8 @@ export const Fonts = Platform.select({
     rounded:
       "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-    manuscript: "'Uncial Antiqua', 'Cinzel Decorative', 'Crimson Text', Georgia, serif",
+    manuscript:
+      "'Uncial Antiqua', 'Cinzel Decorative', 'Crimson Text', Georgia, serif",
   },
 });
 

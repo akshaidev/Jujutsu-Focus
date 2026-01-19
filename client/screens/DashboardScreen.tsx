@@ -1,11 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  Layout,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { useGameState } from "@/hooks/useGameState";
@@ -16,7 +12,7 @@ import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { ControlButton } from "@/components/ControlButton";
 import { BindingVowWidget } from "@/components/BindingVowWidget";
 import { RCTButton } from "@/components/RCTButton";
-import { DebugPanel } from "@/components/DebugPanel";
+// import { DebugPanel } from "@/components/DebugPanel";
 import { VowSuccessModal } from "@/components/VowSuccessModal";
 import { SessionTimer } from "@/components/SessionTimer";
 import { CursedGuide } from "@/components/CursedGuide";
@@ -46,7 +42,7 @@ export default function DashboardScreen() {
     signBindingVow,
     useRCT,
     dismissVowSuccess,
-    debugUpdateState,
+    // debugUpdateState,
   } = useGameState();
 
   if (!isLoaded) {
@@ -160,11 +156,11 @@ export default function DashboardScreen() {
           />
         ) : null}
 
-        <DebugPanel
+        {/* <DebugPanel
           state={state}
           earningRate={earningRate}
           debugUpdateState={debugUpdateState}
-        />
+        /> */}
       </ScrollView>
 
       <VowSuccessModal visible={showVowSuccess} onDismiss={dismissVowSuccess} />

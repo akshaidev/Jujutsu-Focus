@@ -11,6 +11,7 @@ import { queryClient } from "@/lib/query-client";
 
 import { AppGate } from "@/navigation/AppGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GameStateProvider } from "@/context/GameStateContext";
 
 export default function App() {
   return (
@@ -20,7 +21,9 @@ export default function App() {
           <GestureHandlerRootView style={styles.root}>
             <KeyboardProvider>
               <NavigationContainer>
-                <AppGate />
+                <GameStateProvider>
+                  <AppGate />
+                </GameStateProvider>
               </NavigationContainer>
               <StatusBar style="auto" />
             </KeyboardProvider>

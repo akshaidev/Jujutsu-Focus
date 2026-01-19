@@ -156,6 +156,8 @@ const styles = StyleSheet.create({
   dailyContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
     gap: Spacing.sm,
     marginTop: Spacing.md,
     paddingTop: Spacing.md,

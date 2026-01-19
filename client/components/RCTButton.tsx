@@ -96,10 +96,11 @@ export function RCTButton({
       ];
 
   const buttonTitle = "Use Reverse Cursed Technique";
-  
+
   const subtitleText =
     rctCredits === 0
-                ? "Every 3 Days of Streak Gets You 1 Reverse Cursed Technique Use"      : balance >= 0
+      ? "Every 3 Days of Streak Gets You 1 Reverse Cursed Technique Use"
+      : balance >= 0
         ? "Only usable in Debt"
         : nceBalance < 0.1
           ? "No NCE to purify"

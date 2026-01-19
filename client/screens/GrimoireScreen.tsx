@@ -44,8 +44,8 @@ function ScripturesTab() {
           Streaks (Heavenly Gift)
         </ThemedText>
         <ThemedText style={styles.cardText}>
-          Maintain a positive CE balance for consecutive days to build a
-          Streak. Every 3 days of a streak grants you one use of Reverse Cursed
+          Maintain a positive CE balance for consecutive days to build a Streak.
+          Every 3 days of a streak grants you one use of Reverse Cursed
           Technique (RCT).
         </ThemedText>
       </GlassCard>
