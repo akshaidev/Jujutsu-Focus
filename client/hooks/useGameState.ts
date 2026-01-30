@@ -1,6 +1,9 @@
 import { useContext } from "react";
 import { GameStateContext } from "../context/GameStateContext";
 
+// Re-export types for convenience
+export type { GameState, LogType, LogEntry, Mode, VowState } from "./useGameStateInternal";
+
 export function useGameState() {
   const context = useContext(GameStateContext);
   if (context === undefined) {

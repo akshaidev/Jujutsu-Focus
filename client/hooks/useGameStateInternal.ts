@@ -8,13 +8,34 @@ import {
   getServerDate
 } from "@/utils/timeService";
 import { playSafeBreakEndNotification } from "@/utils/audioService";
+import {
+  SAFE_BREAK_EARN_RATIO,
+  SAFE_BREAK_MAX_SECONDS,
+  MAX_LOG_ENTRIES,
+  CE_EARNING_RATE_BASE,
+  CE_EARNING_RATE_DEBT,
+  CE_EARNING_RATE_SEVERE_DEBT,
+  DEBT_THRESHOLD_MILD,
+  DEBT_THRESHOLD_SEVERE,
+  CE_PER_SECOND,
+  VOW_EARNING_BOOST,
+  VOW_GRACE_TIME_EARNING_RATE,
+  NCE_EARNING_RATE,
+  RCT_STREAK_DAYS_REQUIRED,
+  TICK_INTERVAL_MS,
+} from "@/constants/gameConfig";
 
 const STORAGE_KEY = "@jujutsu_focus_state";
-const TICK_INTERVAL = 1000;
 
-// Safe Break constants
-const SAFE_BREAK_EARN_RATIO = 5; // 1 second break per 5 seconds of study
-const SAFE_BREAK_MAX_SECONDS = 3600; // 60 minutes cap
+// Log entry type for the cursed chronicles
+export interface LogEntry {
+  timestamp: number;
+  message: string;
+  type: LogType;
+  value?: number;
+  duration?: number;
+  safeBreakUsed?: number;
+}
 
 export interface VowState {
   isActive: boolean;
@@ -41,7 +62,7 @@ export interface GameState {
   dailyGamingSeconds: number;
   lastDailyResetDate: string | null;
   lastSleepDate: string | null;
-  logs: any[];
+  logs: LogEntry[];
   // Active session tracking for background time
   activeSessionMode: Mode | null;
   activeSessionStartTime: number | null;
@@ -52,6 +73,9 @@ export interface GameState {
 }
 
 export type Mode = "idle" | "study" | "gaming";
+
+// Log entry type for the cursed chronicles
+export type LogType = "session" | "sleep" | "system" | "reward" | "vow" | "rct";
 
 const initialVowState: VowState = {
   isActive: false,
@@ -90,15 +114,15 @@ const initialState: GameState = {
 function getEarningRate(balance: number, vowActive: boolean): number {
   let baseRate: number;
   if (balance >= 0) {
-    baseRate = 1.0;
-  } else if (balance > -5) {
-    baseRate = 1.0;
-  } else if (balance > -10) {
-    baseRate = 0.5;
+    baseRate = CE_EARNING_RATE_BASE;
+  } else if (balance > DEBT_THRESHOLD_MILD) {
+    baseRate = CE_EARNING_RATE_BASE;
+  } else if (balance > DEBT_THRESHOLD_SEVERE) {
+    baseRate = CE_EARNING_RATE_DEBT;
   } else {
-    baseRate = 0.25;
+    baseRate = CE_EARNING_RATE_SEVERE_DEBT;
   }
-  return vowActive ? baseRate + 0.5 : baseRate;
+  return vowActive ? baseRate + VOW_EARNING_BOOST : baseRate;
 }
 
 // Use server time for all date calculations to prevent device time manipulation
@@ -116,12 +140,7 @@ export function useGameStateInternal() {
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [isUsingSafeBreak, setIsUsingSafeBreak] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stateRef = useRef<GameState>(state);
   const safeBreakNotifiedRef = useRef(false); // Prevent duplicate notifications
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   // Sync server time on app start, then load state
   useEffect(() => {
@@ -153,7 +172,7 @@ export function useGameStateInternal() {
       intervalRef.current = setInterval(() => {
         tick();
         setSessionSeconds((prev) => prev + 1);
-      }, TICK_INTERVAL);
+      }, TICK_INTERVAL_MS);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -224,7 +243,7 @@ export function useGameStateInternal() {
             value: -penaltyAmount,
           },
           ...(loadedState.logs || []),
-        ].slice(0, 99);
+        ].slice(0, MAX_LOG_ENTRIES - 1);
       }
     }
     return loadedState;
@@ -270,6 +289,16 @@ export function useGameStateInternal() {
         };
       }
 
+      // Safe Break earned during background study (only when balance >= 0 and no vow)
+      if (loadedState.balance >= 0 && !loadedState.vowState.isActive) {
+        const safeBreakEarned = elapsedSeconds / SAFE_BREAK_EARN_RATIO;
+        const newSafeBreak = Math.min(
+          SAFE_BREAK_MAX_SECONDS,
+          (loadedState.safeBreakSeconds || 0) + safeBreakEarned
+        );
+        loadedState.safeBreakSeconds = Math.round(newSafeBreak * 100) / 100;
+      }
+
       loadedState.logs = [
         {
           timestamp: now,
@@ -278,45 +307,57 @@ export function useGameStateInternal() {
           value: ceEarned,
         },
         ...(loadedState.logs || []),
-      ].slice(0, 99);
+      ].slice(0, MAX_LOG_ENTRIES - 1);
 
     } else if (sessionMode === "gaming") {
-      const cePerSecond = 1.0 / 60;
       let ceSpent = 0;
+      let safeBreakUsed = 0;
 
+      // First check for Binding Vow grace time (highest priority)
       if (loadedState.vowState.isActive) {
         const availableGrace = loadedState.vowState.graceTimeSeconds - loadedState.vowState.usedGraceSeconds;
         const graceUsed = Math.min(availableGrace, elapsedSeconds);
         const ceSeconds = elapsedSeconds - graceUsed;
-        ceSpent = cePerSecond * ceSeconds;
+        ceSpent = CE_PER_SECOND * ceSeconds;
         loadedState.vowState = {
           ...loadedState.vowState,
           usedGraceSeconds: Math.round((loadedState.vowState.usedGraceSeconds + graceUsed) * 100) / 100,
         };
       } else {
-        ceSpent = cePerSecond * elapsedSeconds;
+        // Use Safe Break time first, then consume CE
+        const availableSafeBreak = loadedState.safeBreakSeconds || 0;
+        safeBreakUsed = Math.min(availableSafeBreak, elapsedSeconds);
+        const ceSeconds = elapsedSeconds - safeBreakUsed;
+        ceSpent = CE_PER_SECOND * ceSeconds;
+        loadedState.safeBreakSeconds = Math.max(0, availableSafeBreak - safeBreakUsed);
       }
 
       loadedState.balance = Math.round((loadedState.balance - ceSpent) * 10000) / 10000;
       loadedState.totalGamingSeconds += elapsedSeconds;
       loadedState.dailyGamingSeconds = (loadedState.dailyGamingSeconds || 0) + elapsedSeconds;
 
+      const logMessage = safeBreakUsed > 0
+        ? `Background Leisure (-${ceSpent.toFixed(1)} CE in ${Math.floor(elapsedSeconds / 60)}m, Safe Break used)`
+        : `Background Leisure Session (-${ceSpent.toFixed(1)} CE in ${Math.floor(elapsedSeconds / 60)}m)`;
+
       loadedState.logs = [
         {
           timestamp: now,
-          message: `Background Leisure Session (-${ceSpent.toFixed(1)} CE in ${Math.floor(elapsedSeconds / 60)}m)`,
+          message: logMessage,
           type: "session" as const,
           value: -ceSpent,
         },
         ...(loadedState.logs || []),
-      ].slice(0, 99);
+      ].slice(0, MAX_LOG_ENTRIES - 1);
     }
 
     // Clear the active session after applying
     loadedState.activeSessionMode = null;
     loadedState.activeSessionStartTime = null;
 
-    console.log(`[BackgroundTimer] Applied ${elapsedSeconds}s of ${sessionMode} time`);
+    if (__DEV__) {
+      console.log(`[BackgroundTimer] Applied ${elapsedSeconds}s of ${sessionMode} time`);
+    }
     return loadedState;
   };
 
@@ -422,15 +463,15 @@ export function useGameStateInternal() {
           prev.balance,
           prev.vowState.isActive,
         );
-        const cePerSecond = earningRate / 60;
+        const ceEarnedPerSecond = earningRate / 60;
         newState.balance =
-          Math.round((prev.balance + cePerSecond) * 10000) / 10000;
+          Math.round((prev.balance + ceEarnedPerSecond) * 10000) / 10000;
         newState.totalStudySeconds = prev.totalStudySeconds + 1;
         newState.dailyStudySeconds = (prev.dailyStudySeconds || 0) + 1;
 
         // NCE only earned from streak, NOT from binding vow
         if (prev.streakDays > 0) {
-          const ncePerSecond = 0.5 / 60;
+          const ncePerSecond = NCE_EARNING_RATE / 60;
           newState.nceBalance =
             Math.round((prev.nceBalance + ncePerSecond) * 10000) / 10000;
         }
@@ -469,7 +510,7 @@ export function useGameStateInternal() {
                 value: -penaltyAmount,
               },
               ...(newState.logs || []),
-            ].slice(0, 99);
+            ].slice(0, MAX_LOG_ENTRIES - 1);
             return newState;
           }
 
@@ -497,7 +538,6 @@ export function useGameStateInternal() {
           }
         }
       } else if (currentMode === "gaming") {
-        const cePerSecond = 1.0 / 60;
         newState.totalGamingSeconds = prev.totalGamingSeconds + 1;
         newState.dailyGamingSeconds = (prev.dailyGamingSeconds || 0) + 1;
 
@@ -515,7 +555,7 @@ export function useGameStateInternal() {
             setTimeout(() => setIsUsingSafeBreak(false), 0);
           } else {
             newState.balance =
-              Math.round((prev.balance - cePerSecond) * 10000) / 10000;
+              Math.round((prev.balance - CE_PER_SECOND) * 10000) / 10000;
             setTimeout(() => setIsUsingSafeBreak(false), 0);
           }
         } else {
@@ -533,7 +573,7 @@ export function useGameStateInternal() {
           } else {
             // No Safe Break available - consume CE
             newState.balance =
-              Math.round((prev.balance - cePerSecond) * 10000) / 10000;
+              Math.round((prev.balance - CE_PER_SECOND) * 10000) / 10000;
 
             // Check if we just transitioned from Safe Break to CE consumption
             if (prev.safeBreakSeconds > 0 && !safeBreakNotifiedRef.current) {
@@ -620,7 +660,7 @@ export function useGameStateInternal() {
           activeSessionMode: null,
           activeSessionStartTime: null,
           sessionSafeBreakSecondsUsed: 0, // Reset for next session
-          logs: [newLog, ...currentLogs.slice(0, 99)], // Keep max 100 logs
+          logs: [newLog, ...currentLogs.slice(0, MAX_LOG_ENTRIES - 1)], // Keep max 100 logs
         };
       });
     } else {
@@ -674,7 +714,7 @@ export function useGameStateInternal() {
           type: "vow" as const,
         },
         ...(prev.logs || []),
-      ].slice(0, 99),
+      ].slice(0, MAX_LOG_ENTRIES - 1),
     }));
     return true;
   }, [state.balance, state.vowState.lastVowDate, state.vowState.vowPenaltyUntil]);
@@ -694,7 +734,7 @@ export function useGameStateInternal() {
     const currentLogs = currentState.logs || [];
     return {
       ...currentState,
-      logs: [newLog, ...currentLogs.slice(0, 99)], // Prepend and keep max 100 logs
+      logs: [newLog, ...currentLogs.slice(0, MAX_LOG_ENTRIES - 1)], // Prepend and keep max 100 logs
     };
   };
 
@@ -757,7 +797,9 @@ export function useGameStateInternal() {
       // New NCE balance: preserve excess NCE
       const newNceBalance = prev.nceBalance - healAmount;
 
-      console.log(`Purified Debt (+${healAmount.toFixed(2)} CE)`);
+      if (__DEV__) {
+        console.log(`Purified Debt (+${healAmount.toFixed(2)} CE)`);
+      }
 
       return {
         ...prev,
@@ -772,7 +814,7 @@ export function useGameStateInternal() {
             value: healAmount,
           },
           ...(prev.logs || []),
-        ].slice(0, 99),
+        ].slice(0, MAX_LOG_ENTRIES - 1),
       };
     });
     return true;

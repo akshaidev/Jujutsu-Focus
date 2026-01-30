@@ -16,6 +16,7 @@ import { BindingVowConfirmModal } from "@/components/BindingVowConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing } from "@/constants/theme";
 import { getServerTime } from "@/utils/timeService";
+import { VOW_DURATION_MS } from "@/constants/gameConfig";
 
 interface BindingVowWidgetProps {
   isVowActive: boolean;
@@ -41,7 +42,6 @@ function formatTimeWithHours(seconds: number): string {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in ms
 
 export function BindingVowWidget({
   isVowActive,

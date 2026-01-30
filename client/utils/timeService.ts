@@ -54,7 +54,9 @@ export async function syncServerTime(): Promise<boolean> {
                 serverTimeOffset = Date.now() - adjustedServerTime;
                 isTimeSynced = true;
 
-                console.log(`[TimeService] Synced via ${new URL(endpoint).hostname} - Offset: ${(serverTimeOffset / 1000).toFixed(1)}s`);
+                if (__DEV__) {
+                    console.log(`[TimeService] Synced via ${new URL(endpoint).hostname} - Offset: ${(serverTimeOffset / 1000).toFixed(1)}s`);
+                }
                 return true;
             }
         } catch (error) {
@@ -63,7 +65,9 @@ export async function syncServerTime(): Promise<boolean> {
         }
     }
 
-    console.warn("[TimeService] All sync attempts failed, using device time");
+    if (__DEV__) {
+        console.warn("[TimeService] All sync attempts failed, using device time");
+    }
     return false;
 }
 

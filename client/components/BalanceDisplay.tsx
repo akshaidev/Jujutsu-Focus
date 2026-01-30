@@ -52,9 +52,10 @@ export function BalanceDisplay({
 
   useEffect(() => {
     displayScale.value = withSpring(1.05, { damping: 10, stiffness: 200 });
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       displayScale.value = withSpring(1, springConfig);
     }, 100);
+    return () => clearTimeout(timeoutId);
   }, [Math.floor(balance * 100)]);
 
   const animatedStyle = useAnimatedStyle(() => ({

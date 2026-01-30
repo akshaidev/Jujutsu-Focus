@@ -18,7 +18,7 @@ export function DebugPanel({
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   const consumptionRate = 1.0;
-  const nceRate = state.streakDays > 0 || state.vowState.isActive ? 0.5 : 0.0;
+  const nceRate = state.streakDays > 0 ? 0.5 : 0.0;
 
   const handleUpdate = (updates: Partial<GameState>) => {
     debugUpdateState(updates);
