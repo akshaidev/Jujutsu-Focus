@@ -40,6 +40,9 @@ export const VOW_DURATION_MS = 24 * 60 * 60 * 1000;
 /** Penalty cooldown after failing a vow (2 hours in milliseconds) */
 export const VOW_PENALTY_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
+/** Penalty duration after failing vow - doubled debt period (6 hours in milliseconds) */
+export const VOW_PENALTY_DURATION_MS = 6 * 60 * 60 * 1000;
+
 /** Penalty multiplier for vow failure */
 export const VOW_PENALTY_MULTIPLIER = 1.0;
 
@@ -60,6 +63,12 @@ export const SAFE_BREAK_EARN_RATIO = 5;
 
 /** Maximum Safe Break seconds that can be accumulated (60 minutes) */
 export const SAFE_BREAK_MAX_SECONDS = 60 * 60;
+
+/** Seconds before Safe Break ends to trigger warning sound */
+export const SAFE_BREAK_WARNING_SECONDS = 3;
+
+/** Threshold in seconds to switch from seconds to minutes display (2 minutes) */
+export const SAFE_BREAK_MINUTES_THRESHOLD = 120;
 
 // --- Sleep ---
 /** CE bonus per hour of sleep logged */

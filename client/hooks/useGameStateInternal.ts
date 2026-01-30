@@ -7,10 +7,11 @@ import {
   getServerTodayString,
   getServerDate
 } from "@/utils/timeService";
-import { playSafeBreakEndNotification } from "@/utils/audioService";
+import { playSafeBreakEndNotification, playSafeBreakWarning } from "@/utils/audioService";
 import {
   SAFE_BREAK_EARN_RATIO,
   SAFE_BREAK_MAX_SECONDS,
+  SAFE_BREAK_WARNING_SECONDS,
   MAX_LOG_ENTRIES,
   CE_EARNING_RATE_BASE,
   CE_EARNING_RATE_DEBT,
@@ -20,6 +21,8 @@ import {
   CE_PER_SECOND,
   VOW_EARNING_BOOST,
   VOW_GRACE_TIME_EARNING_RATE,
+  VOW_DURATION_MS,
+  VOW_PENALTY_DURATION_MS,
   NCE_EARNING_RATE,
   RCT_STREAK_DAYS_REQUIRED,
   TICK_INTERVAL_MS,
@@ -140,7 +143,8 @@ export function useGameStateInternal() {
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [isUsingSafeBreak, setIsUsingSafeBreak] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const safeBreakNotifiedRef = useRef(false); // Prevent duplicate notifications
+  const safeBreakNotifiedRef = useRef(false); // Prevent duplicate end notifications
+  const safeBreakWarningTriggeredRef = useRef(false); // Prevent duplicate warnings
 
   // Sync server time on app start, then load state
   useEffect(() => {
@@ -212,9 +216,6 @@ export function useGameStateInternal() {
     return () => subscription?.remove();
   }, [isLoaded]);
 
-  const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-  const PENALTY_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
-
   const checkExpiredVow = (loadedState: GameState): GameState => {
     // Check if there's an active vow that has expired
     if (
@@ -233,7 +234,7 @@ export function useGameStateInternal() {
         loadedState.vowState = {
           ...initialVowState,
           lastVowDate: loadedState.vowState.lastVowDate,
-          vowPenaltyUntil: getServerTime() + PENALTY_DURATION_MS,
+          vowPenaltyUntil: getServerTime() + VOW_PENALTY_DURATION_MS,
         };
         loadedState.logs = [
           {
@@ -485,11 +486,14 @@ export function useGameStateInternal() {
             (prev.safeBreakSeconds || 0) + safeBreakEarned
           );
           newState.safeBreakSeconds = Math.round(newSafeBreak * 100) / 100;
+
+          // Reset warning flag if Safe Break is above threshold
+          if (newSafeBreak > SAFE_BREAK_WARNING_SECONDS) {
+            safeBreakWarningTriggeredRef.current = false;
+          }
         }
 
         if (prev.vowState.isActive) {
-          const VOW_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-          const PENALTY_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
           const elapsed = getServerTime() - (prev.vowState.startedAt || 0);
 
           // Check if 24 hours expired - apply penalty
@@ -500,7 +504,7 @@ export function useGameStateInternal() {
             newState.vowState = {
               ...initialVowState,
               lastVowDate: prev.vowState.lastVowDate,
-              vowPenaltyUntil: getServerTime() + PENALTY_DURATION_MS,
+              vowPenaltyUntil: getServerTime() + VOW_PENALTY_DURATION_MS,
             };
             newState.logs = [
               {
@@ -564,8 +568,16 @@ export function useGameStateInternal() {
 
           if (availableSafeBreak > 0) {
             // Consume Safe Break time (1 second per tick)
-            newState.safeBreakSeconds = Math.max(0, availableSafeBreak - 1);
+            const newSafeBreakSeconds = Math.max(0, availableSafeBreak - 1);
+            newState.safeBreakSeconds = newSafeBreakSeconds;
             newState.sessionSafeBreakSecondsUsed = (prev.sessionSafeBreakSecondsUsed || 0) + 1;
+
+            // Trigger warning at threshold (e.g., 3 seconds remaining)
+            if (newSafeBreakSeconds === SAFE_BREAK_WARNING_SECONDS && !safeBreakWarningTriggeredRef.current) {
+              safeBreakWarningTriggeredRef.current = true;
+              setTimeout(() => playSafeBreakWarning(), 0);
+            }
+
             // Timer should be green - we're using Safe Break
             setTimeout(() => setIsUsingSafeBreak(true), 0);
             // Reset notification flag when we have safe break

@@ -11,6 +11,7 @@ import Animated, {
 import { useTheme } from "@/hooks/useTheme";
 import { useGameState } from "@/hooks/useGameState";
 import { Spacing } from "@/constants/theme";
+import { SAFE_BREAK_MINUTES_THRESHOLD } from "@/constants/gameConfig";
 
 import { StatusPill } from "@/components/StatusPill";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
@@ -24,6 +25,17 @@ import { CursedGuide } from "@/components/CursedGuide";
 import { GuideBookButton } from "@/components/GuideBookButton";
 import { CursedLog } from "@/components/CursedLog";
 import { HistoryLogButton } from "@/components/HistoryLogButton";
+
+// Format Safe Break display: minutes when >= 2min, seconds when < 2min
+const formatSafeBreak = (seconds: number): string => {
+  const roundedSeconds = Math.floor(seconds);
+  if (roundedSeconds >= SAFE_BREAK_MINUTES_THRESHOLD) {
+    const mins = Math.floor(roundedSeconds / 60);
+    const secs = roundedSeconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  }
+  return `${roundedSeconds}s`;
+};
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -101,7 +113,7 @@ export default function DashboardScreen() {
             <StatusPill
               icon="clock"
               label="Safe Break"
-              value={`${Math.floor(safeBreakSeconds / 60)}m`}
+              value={formatSafeBreak(safeBreakSeconds)}
               variant="success"
             />
           )}

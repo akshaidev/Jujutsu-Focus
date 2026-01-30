@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -12,8 +12,14 @@ import { queryClient } from "@/lib/query-client";
 import { AppGate } from "@/navigation/AppGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GameStateProvider } from "@/context/GameStateContext";
+import { initializeWebAudio } from "@/utils/audioService";
 
 export default function App() {
+  // Initialize web audio on mount (sets up click listeners for AudioContext)
+  useEffect(() => {
+    initializeWebAudio();
+  }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
