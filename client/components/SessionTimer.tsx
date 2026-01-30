@@ -18,6 +18,7 @@ interface SessionTimerProps {
   mode: "study" | "gaming";
   sessionSeconds: number;
   dailySeconds: number;
+  isUsingSafeBreak?: boolean;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -35,6 +36,7 @@ export function SessionTimer({
   mode,
   sessionSeconds,
   dailySeconds,
+  isUsingSafeBreak = false,
 }: SessionTimerProps) {
   const { theme, isDark } = useTheme();
   const pulseOpacity = useSharedValue(0.7);
@@ -51,18 +53,33 @@ export function SessionTimer({
     opacity: pulseOpacity.value,
   }));
 
-  const accentColor = mode === "study" ? theme.cursedEnergy : theme.debt;
-  const modeLabel = mode === "study" ? "Focus Session" : "Leisure Session";
+  // Safe Break in gaming mode = green color
+  const isSafeBreakActive = mode === "gaming" && isUsingSafeBreak;
+
+  const accentColor = mode === "study"
+    ? theme.cursedEnergy
+    : isSafeBreakActive
+      ? theme.success  // Green when using Safe Break
+      : theme.debt;    // Red when consuming CE
+
+  const modeLabel = mode === "study"
+    ? "Focus Session"
+    : isSafeBreakActive
+      ? "Safe Break Active"
+      : "Leisure Session";
+
   const dailyLabel =
     mode === "study" ? "Today's Total Focus" : "Today's Total Leisure";
-  const icon = mode === "study" ? "book-open" : "play";
+  const icon = mode === "study" ? "book-open" : isSafeBreakActive ? "shield" : "play";
 
   const getBorderColor = () => {
-    return mode === "study" ? theme.cursedEnergy : theme.debt;
+    if (mode === "study") return theme.cursedEnergy;
+    return isSafeBreakActive ? theme.success : theme.debt;
   };
 
   const getBackgroundTint = () => {
-    return mode === "study" ? theme.cursedEnergyBg : theme.debtBg;
+    if (mode === "study") return theme.cursedEnergyBg;
+    return isSafeBreakActive ? theme.successBg : theme.debtBg;
   };
 
   const innerContent = (

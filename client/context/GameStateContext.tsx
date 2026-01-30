@@ -12,6 +12,8 @@ interface GameStateContextType {
   showVowSuccess: boolean;
   showSleepModal: boolean;
   sessionSeconds: number;
+  isUsingSafeBreak: boolean;
+  safeBreakSeconds: number;
   startStudy: () => void;
   startGaming: () => void;
   stopTimer: () => void;

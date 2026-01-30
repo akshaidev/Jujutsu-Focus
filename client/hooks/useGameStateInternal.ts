@@ -7,9 +7,14 @@ import {
   getServerTodayString,
   getServerDate
 } from "@/utils/timeService";
+import { playSafeBreakEndNotification } from "@/utils/audioService";
 
 const STORAGE_KEY = "@jujutsu_focus_state";
 const TICK_INTERVAL = 1000;
+
+// Safe Break constants
+const SAFE_BREAK_EARN_RATIO = 5; // 1 second break per 5 seconds of study
+const SAFE_BREAK_MAX_SECONDS = 3600; // 60 minutes cap
 
 export interface VowState {
   isActive: boolean;
@@ -40,6 +45,10 @@ export interface GameState {
   // Active session tracking for background time
   activeSessionMode: Mode | null;
   activeSessionStartTime: number | null;
+  // Safe Break tracking
+  safeBreakSeconds: number;
+  lastSafeBreakResetDate: string | null;
+  sessionSafeBreakSecondsUsed: number;
 }
 
 export type Mode = "idle" | "study" | "gaming";
@@ -72,6 +81,10 @@ const initialState: GameState = {
   logs: [],
   activeSessionMode: null,
   activeSessionStartTime: null,
+  // Safe Break
+  safeBreakSeconds: 0,
+  lastSafeBreakResetDate: null,
+  sessionSafeBreakSecondsUsed: 0,
 };
 
 function getEarningRate(balance: number, vowActive: boolean): number {
@@ -101,8 +114,10 @@ export function useGameStateInternal() {
   const [showSleepModal, setShowSleepModal] = useState(false);
   const [hasDismissedSleepModal, setHasDismissedSleepModal] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [isUsingSafeBreak, setIsUsingSafeBreak] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stateRef = useRef<GameState>(state);
+  const safeBreakNotifiedRef = useRef(false); // Prevent duplicate notifications
 
   useEffect(() => {
     stateRef.current = state;
@@ -350,6 +365,11 @@ export function useGameStateInternal() {
       loadedState.dailyGamingSeconds = 0;
       loadedState.lastDailyResetDate = today;
     }
+    // Reset Safe Break bank at midnight
+    if (loadedState.lastSafeBreakResetDate !== today) {
+      loadedState.safeBreakSeconds = 0;
+      loadedState.lastSafeBreakResetDate = today;
+    }
   };
 
   const checkMidnightReset = (loadedState: GameState) => {
@@ -391,6 +411,11 @@ export function useGameStateInternal() {
         newState.dailyGamingSeconds = 0;
         newState.lastDailyResetDate = today;
       }
+      // Also check Safe Break reset in tick
+      if (prev.lastSafeBreakResetDate !== today) {
+        newState.safeBreakSeconds = 0;
+        newState.lastSafeBreakResetDate = today;
+      }
 
       if (currentMode === "study") {
         const earningRate = getEarningRate(
@@ -408,6 +433,17 @@ export function useGameStateInternal() {
           const ncePerSecond = 0.5 / 60;
           newState.nceBalance =
             Math.round((prev.nceBalance + ncePerSecond) * 10000) / 10000;
+        }
+
+        // Safe Break earning: only when balance >= 0 (not in debt)
+        // Earn at 1:5 ratio (1 sec break per 5 sec study = 0.2 sec per tick)
+        if (newState.balance >= 0 && !prev.vowState.isActive) {
+          const safeBreakEarned = 1 / SAFE_BREAK_EARN_RATIO; // 0.2 seconds per study second
+          const newSafeBreak = Math.min(
+            SAFE_BREAK_MAX_SECONDS,
+            (prev.safeBreakSeconds || 0) + safeBreakEarned
+          );
+          newState.safeBreakSeconds = Math.round(newSafeBreak * 100) / 100;
         }
 
         if (prev.vowState.isActive) {
@@ -466,6 +502,7 @@ export function useGameStateInternal() {
         newState.dailyGamingSeconds = (prev.dailyGamingSeconds || 0) + 1;
 
         if (prev.vowState.isActive) {
+          // Binding Vow active: use grace time first, then CE
           const availableGrace =
             prev.vowState.graceTimeSeconds - prev.vowState.usedGraceSeconds;
           if (availableGrace > 0) {
@@ -474,13 +511,42 @@ export function useGameStateInternal() {
               usedGraceSeconds:
                 Math.round((prev.vowState.usedGraceSeconds + 1) * 100) / 100,
             };
+            // Still using grace time, set safe break state to false
+            setTimeout(() => setIsUsingSafeBreak(false), 0);
           } else {
             newState.balance =
               Math.round((prev.balance - cePerSecond) * 10000) / 10000;
+            setTimeout(() => setIsUsingSafeBreak(false), 0);
           }
         } else {
-          newState.balance =
-            Math.round((prev.balance - cePerSecond) * 10000) / 10000;
+          // No Binding Vow: check Safe Break first
+          const availableSafeBreak = prev.safeBreakSeconds || 0;
+
+          if (availableSafeBreak > 0) {
+            // Consume Safe Break time (1 second per tick)
+            newState.safeBreakSeconds = Math.max(0, availableSafeBreak - 1);
+            newState.sessionSafeBreakSecondsUsed = (prev.sessionSafeBreakSecondsUsed || 0) + 1;
+            // Timer should be green - we're using Safe Break
+            setTimeout(() => setIsUsingSafeBreak(true), 0);
+            // Reset notification flag when we have safe break
+            safeBreakNotifiedRef.current = false;
+          } else {
+            // No Safe Break available - consume CE
+            newState.balance =
+              Math.round((prev.balance - cePerSecond) * 10000) / 10000;
+
+            // Check if we just transitioned from Safe Break to CE consumption
+            if (prev.safeBreakSeconds > 0 && !safeBreakNotifiedRef.current) {
+              // Safe Break just depleted - play notification
+              safeBreakNotifiedRef.current = true;
+              setTimeout(() => {
+                playSafeBreakEndNotification();
+                setIsUsingSafeBreak(false);
+              }, 0);
+            } else {
+              setTimeout(() => setIsUsingSafeBreak(false), 0);
+            }
+          }
         }
       }
 
@@ -498,10 +564,12 @@ export function useGameStateInternal() {
   }, []);
 
   const startGaming = useCallback(() => {
+    safeBreakNotifiedRef.current = false; // Reset notification flag for new session
     setState((prev) => ({
       ...prev,
       activeSessionMode: "gaming" as Mode,
       activeSessionStartTime: getServerTime(),
+      sessionSafeBreakSecondsUsed: 0, // Reset session Safe Break tracking
     }));
     setMode("gaming");
   }, []);
@@ -511,6 +579,7 @@ export function useGameStateInternal() {
       setState((prev) => {
         let logMessage = "";
         let value = 0;
+        let safeBreakUsed = 0;
 
         if (mode === "study") {
           const earningRate = getEarningRate(
@@ -520,16 +589,29 @@ export function useGameStateInternal() {
           value = (earningRate * sessionSeconds) / 60;
           logMessage = `Cursed Energy Gained From Focus Session`;
         } else if (mode === "gaming") {
-          value = -(sessionSeconds / 60);
-          logMessage = `Spent Cursed Energy on Leisure Session`;
+          // Calculate actual CE spent (session time minus Safe Break time used)
+          safeBreakUsed = prev.sessionSafeBreakSecondsUsed || 0;
+          const ceSecondsSpent = sessionSeconds - safeBreakUsed;
+          value = -(ceSecondsSpent / 60); // Only CE seconds count as spending
+
+          // Format log message based on Safe Break usage
+          const totalMinutes = Math.floor(sessionSeconds / 60);
+          const ceSpentDisplay = Math.abs(value).toFixed(1);
+
+          if (safeBreakUsed > 0) {
+            logMessage = `Spent ${ceSpentDisplay}CE for ${totalMinutes} minutes (Safe Break Usage Involved)`;
+          } else {
+            logMessage = `Spent Cursed Energy on Leisure Session`;
+          }
         }
 
         const newLog = {
           timestamp: getServerTime(),
           message: logMessage,
-          type: mode === "study" ? "session" : "session",
+          type: "session" as const,
           value: value,
           duration: sessionSeconds,
+          safeBreakUsed: safeBreakUsed > 0 ? safeBreakUsed : undefined,
         };
 
         const currentLogs = prev.logs || [];
@@ -537,6 +619,7 @@ export function useGameStateInternal() {
           ...prev,
           activeSessionMode: null,
           activeSessionStartTime: null,
+          sessionSafeBreakSecondsUsed: 0, // Reset for next session
           logs: [newLog, ...currentLogs.slice(0, 99)], // Keep max 100 logs
         };
       });
@@ -546,9 +629,11 @@ export function useGameStateInternal() {
         ...prev,
         activeSessionMode: null,
         activeSessionStartTime: null,
+        sessionSafeBreakSecondsUsed: 0,
       }));
     }
 
+    setIsUsingSafeBreak(false);
     setMode("idle");
   }, [mode, sessionSeconds]);
 
@@ -731,6 +816,8 @@ export function useGameStateInternal() {
     showVowSuccess,
     showSleepModal,
     sessionSeconds,
+    isUsingSafeBreak,
+    safeBreakSeconds: state.safeBreakSeconds || 0,
     startStudy,
     startGaming,
     stopTimer,

@@ -41,6 +41,8 @@ export default function DashboardScreen() {
     hasUsedVowToday,
     showVowSuccess,
     sessionSeconds,
+    isUsingSafeBreak,
+    safeBreakSeconds,
     startStudy,
     startGaming,
     stopTimer,
@@ -95,6 +97,14 @@ export default function DashboardScreen() {
             value={state.rctCredits}
             variant={state.rctCredits > 0 ? "success" : "default"}
           />
+          {safeBreakSeconds > 0 && (
+            <StatusPill
+              icon="clock"
+              label="Safe Break"
+              value={`${Math.floor(safeBreakSeconds / 60)}m`}
+              variant="success"
+            />
+          )}
         </View>
 
         <BalanceDisplay
@@ -118,6 +128,7 @@ export default function DashboardScreen() {
                   ? state.dailyStudySeconds || 0
                   : state.dailyGamingSeconds || 0
               }
+              isUsingSafeBreak={isUsingSafeBreak}
             />
           </Animated.View>
         ) : null}

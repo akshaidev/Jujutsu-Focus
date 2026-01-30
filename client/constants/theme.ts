@@ -202,5 +202,6 @@ export const CursedTheme = {
     cursedPurple: "#4B0082",
     cursedRed: "#8B0000",
     agedGold: "#DAA520",
+    success: "#10B981",
   },
 };
