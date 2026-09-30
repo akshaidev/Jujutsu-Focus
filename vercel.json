@@ -2,7 +2,7 @@
   "buildCommand": "expo export -p web",
   "outputDirectory": "dist",
   "devCommand": "expo",
-  "cleanUrls": true,
+  "cleanUrls": false,
   "framework": null,
   "rewrites": [
     {
@@ -11,3 +11,5 @@
     }
   ]
 }
+
+
